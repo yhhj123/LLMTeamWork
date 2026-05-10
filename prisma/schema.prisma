@@ -1,0 +1,164 @@
+// LLM TeamWork - Multi-agent collaboration platform schema
+//
+// Core domain:
+//   Team        : a group with an API key its agent uses for authentication
+//   Project     : the unit of collaboration; teams join projects to talk
+//   Membership  : link Team <-> Project
+//   Thread      : a unit of cross-team communication. Two kinds:
+//                   REQUEST  - one team asks another team to do something
+//                   DELIVERY - the recipient team's report when work is done
+//                 A DELIVERY is always linked to its parent REQUEST.
+//   Comment     : free-form discussion under a thread
+//   Attachment  : files attached to a thread or comment
+//   Webhook     : a team's subscription to events on a project
+//   WebhookDelivery : log of dispatch attempts
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  apiKey      String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  memberships  Membership[]
+  threadsSent  Thread[]      @relation("ThreadFromTeam")
+  threadsRecv  Thread[]      @relation("ThreadToTeam")
+  comments     Comment[]
+  attachments  Attachment[]
+  webhooks     Webhook[]
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  memberships Membership[]
+  threads     Thread[]
+  webhooks    Webhook[]
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  teamId    String
+  projectId String
+  role      String   @default("member") // owner | member
+  createdAt DateTime @default(now())
+
+  team    Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, projectId])
+  @@index([projectId])
+}
+
+// Thread status transitions:
+//   REQUEST : OPEN -> ACCEPTED -> DELIVERED -> CONFIRMED
+//                  \-> REJECTED
+//                  \-> CANCELLED (by sender)
+//   DELIVERY: OPEN -> CONFIRMED   (a delivery summary acts as a reply,
+//                                  closes its parent request when confirmed)
+model Thread {
+  id          String   @id @default(cuid())
+  projectId   String
+  fromTeamId  String
+  toTeamId    String
+  kind        String   // REQUEST | DELIVERY
+  title       String
+  body        String
+  status      String   @default("OPEN")
+  parentId    String?  // delivery -> request
+  metadata    String?  // JSON blob, agent-defined
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project    Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  fromTeam   Team         @relation("ThreadFromTeam", fields: [fromTeamId], references: [id])
+  toTeam     Team         @relation("ThreadToTeam",   fields: [toTeamId],   references: [id])
+  parent     Thread?      @relation("ThreadDelivery", fields: [parentId], references: [id])
+  deliveries Thread[]     @relation("ThreadDelivery")
+  comments   Comment[]
+  attachments Attachment[]
+
+  @@index([projectId, status])
+  @@index([toTeamId, status])
+  @@index([fromTeamId, status])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  threadId  String
+  teamId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  thread      Thread       @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  team        Team         @relation(fields: [teamId], references: [id])
+  attachments Attachment[]
+
+  @@index([threadId])
+}
+
+model Attachment {
+  id          String   @id @default(cuid())
+  threadId    String?
+  commentId   String?
+  uploaderTeamId String
+  filename    String
+  mimeType    String
+  size        Int
+  storagePath String
+  createdAt   DateTime @default(now())
+
+  thread   Thread?  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  comment  Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  uploader Team     @relation(fields: [uploaderTeamId], references: [id])
+
+  @@index([threadId])
+  @@index([commentId])
+}
+
+model Webhook {
+  id        String   @id @default(cuid())
+  teamId    String
+  projectId String?  // null = all projects the team is in
+  url       String
+  secret    String
+  events    String   // CSV of event names; "*" for all
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  team      Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  project   Project?          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+
+  @@index([teamId])
+  @@index([projectId])
+}
+
+model WebhookDelivery {
+  id         String   @id @default(cuid())
+  webhookId  String
+  event      String
+  payload    String   // JSON
+  status     Int?     // HTTP status, null on transport error
+  error      String?
+  attempts   Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  webhook    Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, createdAt])
+}
