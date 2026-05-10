@@ -1,0 +1,23 @@
+# Caddy config for LLM TeamWork.
+# $DOMAIN is injected from docker-compose env.
+# Caddy automatically obtains and renews a Let's Encrypt cert.
+
+{
+	# Set ACME contact to silence the prompt; replace with your email if you want.
+	email admin@{$DOMAIN}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+
+	# Long timeout for streaming MCP responses if we add SSE later.
+	header /api/mcp* {
+		Cache-Control "no-store"
+	}
+
+	# Generous body size for attachment uploads (matches app-side 25 MB cap).
+	request_body {
+		max_size 30MB
+	}
+}

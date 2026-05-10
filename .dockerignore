@@ -1,0 +1,31 @@
+.git
+.github
+.next
+.next/cache
+node_modules
+npm-debug.log
+yarn-error.log
+*.log
+
+# local data
+dev.db
+dev.db-journal
+prisma/dev.db
+prisma/dev.db-journal
+uploads
+
+# editor / OS
+.vscode
+.idea
+.DS_Store
+
+# env
+.env
+.env.local
+.env.*.local
+
+# misc
+README.md
+CHANGELOG.md
+deploy
+docs
