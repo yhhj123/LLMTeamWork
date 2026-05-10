@@ -2,7 +2,7 @@
 # LLM TeamWork — server bootstrap (nginx-front model).
 #
 # Brings up the LLM TeamWork app container on 127.0.0.1:$APP_HOST_PORT (default
-# 3001). Use this when the host already runs an nginx that owns 80/443; that
+# 3050). Use this when the host already runs an nginx that owns 80/443; that
 # nginx then reverse-proxies tm.9swt.com to our container. See
 # deploy/nginx/tm.9swt.com.conf for the matching nginx vhost.
 #
@@ -12,7 +12,7 @@
 #     | bash
 #
 # Optional env vars:
-#   APP_HOST_PORT      host port to bind (default 3001)
+#   APP_HOST_PORT      host port to bind (default 3050)
 #   INSTALL_NGINX_CONF =1 to copy nginx vhost to /etc/nginx/conf.d/ and reload
 #   DOMAIN             vhost server_name (default tm.9swt.com)
 
@@ -21,7 +21,7 @@ set -euo pipefail
 REPO_URL="${REPO_URL:-https://github.com/yhhj123/LLMTeamWork.git}"
 BRANCH="${BRANCH:-claude/multi-agent-collaboration-platform-8IvIF}"
 DEST="${DEST:-/opt/llm-teamwork}"
-APP_HOST_PORT="${APP_HOST_PORT:-3001}"
+APP_HOST_PORT="${APP_HOST_PORT:-3050}"
 DOMAIN="${DOMAIN:-tm.9swt.com}"
 INSTALL_NGINX_CONF="${INSTALL_NGINX_CONF:-0}"
 

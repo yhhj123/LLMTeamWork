@@ -1,7 +1,7 @@
 # Deploying LLM TeamWork (nginx-front model)
 
 The host already runs nginx on 80/443 (alongside other vhosts), so the LLM
-TeamWork container binds **only to `127.0.0.1:3001`** and is fronted by an
+TeamWork container binds **only to `127.0.0.1:3050`** and is fronted by an
 nginx vhost.
 
 ## TL;DR
@@ -13,10 +13,10 @@ curl -fsSL https://raw.githubusercontent.com/yhhj123/LLMTeamWork/claude/multi-ag
   | bash
 ```
 
-That brings up the app container at `http://127.0.0.1:3001/`. Verify with:
+That brings up the app container at `http://127.0.0.1:3050/`. Verify with:
 
 ```bash
-curl -fsS http://127.0.0.1:3001/api/mcp
+curl -fsS http://127.0.0.1:3050/api/mcp
 ```
 
 Then add the nginx vhost (next section).
@@ -65,7 +65,7 @@ Then add the nginx vhost (next section).
             │   host nginx     │  (already running, owns 80/443 + other vhosts)
             └─────────┬────────┘
                       │ proxy_pass
-                  3001▼ (loopback only)
+                  3050▼ (loopback only)
             ┌──────────────────┐
             │  llm-teamwork    │  Docker container, Next.js standalone
             │   (Next.js)      │
@@ -105,7 +105,7 @@ itself was updated.
 
 ## Choosing a different host port
 
-If `3001` is also in use:
+If `3050` is also in use:
 
 ```bash
 APP_HOST_PORT=3050 \
@@ -128,11 +128,11 @@ service. Re-run `install.sh`.
 # Container logs
 docker compose -f /opt/llm-teamwork/docker-compose.yml logs -f app
 
-# Confirm nothing else is on 3001
-ss -tlnp | grep ':3001'
+# Confirm nothing else is on 3050
+ss -tlnp | grep ':3050'
 
 # Test the upstream directly (bypasses nginx)
-curl -fsS http://127.0.0.1:3001/
+curl -fsS http://127.0.0.1:3050/
 
 # nginx tail
 tail -f /var/log/nginx/tm.9swt.com.error.log

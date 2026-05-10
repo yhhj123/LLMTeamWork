@@ -1,6 +1,6 @@
 # LLM TeamWork — production compose.
 #
-# Single-service stack. The app binds to 127.0.0.1:3001 on the host so a
+# Single-service stack. The app binds to 127.0.0.1:${APP_HOST_PORT:-3050}
 # host-level reverse proxy (nginx, Caddy, Traefik...) can terminate TLS and
 # forward to it. See deploy/README.md for how to wire up nginx with a
 # tm.9swt.com vhost.
@@ -18,7 +18,7 @@ services:
     container_name: llm-teamwork
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${APP_HOST_PORT:-3001}:3000"
+      - "127.0.0.1:${APP_HOST_PORT:-3050}:3000"
     volumes:
       - data:/data
     environment:
