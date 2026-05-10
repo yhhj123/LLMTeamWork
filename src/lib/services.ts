@@ -12,7 +12,10 @@ import {
 
 // ----- Teams -----------------------------------------------------------------
 
-export async function createTeam(input: { name: string; description?: string }) {
+export async function createTeam(
+  input: { name: string; description?: string },
+  options: { ownerUserId?: string } = {}
+) {
   const slug = slugify(input.name);
   const existing = await prisma.team.findFirst({ where: { OR: [{ name: input.name }, { slug }] } });
   if (existing) throw new HttpError(409, "Team name or slug already taken.");
@@ -22,6 +25,9 @@ export async function createTeam(input: { name: string; description?: string }) 
       slug,
       apiKey: generateApiKey(),
       description: input.description,
+      ...(options.ownerUserId
+        ? { members: { create: { userId: options.ownerUserId, role: "owner" } } }
+        : {}),
     },
   });
   return toPublicTeam(team, /* includeKey */ true);

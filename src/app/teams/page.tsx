@@ -1,36 +1,58 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { requireUser } from "@/lib/session";
 import { TeamRegisterForm } from "./form";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeamsPage() {
-  const teams = await prisma.team.findMany({
+  const user = await requireUser();
+
+  const memberships = await prisma.teamMember.findMany({
+    where: { userId: user.id },
+    include: { team: true },
     orderBy: { createdAt: "desc" },
-    select: { id: true, name: true, slug: true, description: true, createdAt: true },
   });
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <section>
-        <h2 className="text-xl font-semibold mb-3">Register a new team</h2>
-        <p className="text-sm text-slate-600 mb-4">
-          A team is the smallest unit that owns an API key. Anyone — and any agent — that holds
-          the key acts as that team. Save the key once, securely; you can rotate it later.
+    <div className="space-y-8">
+      <header>
+        <h1 className="text-2xl font-semibold">Your teams</h1>
+        <p className="text-sm text-slate-600 mt-1">
+          You belong to {memberships.length} team{memberships.length === 1 ? "" : "s"}. Each team
+          owns an API key its agents use to call the platform.
         </p>
-        <TeamRegisterForm />
-      </section>
+      </header>
+
       <section>
-        <h2 className="text-xl font-semibold mb-3">Existing teams</h2>
-        <ul className="divide-y divide-slate-200 rounded-xl bg-white border border-slate-200">
-          {teams.length === 0 && <li className="p-4 text-slate-500 text-sm">No teams yet.</li>}
-          {teams.map(t => (
-            <li key={t.id} className="p-4">
-              <div className="font-medium">{t.name}</div>
-              <div className="text-xs text-slate-500">slug: {t.slug} · id: {t.id}</div>
-              {t.description && <div className="text-sm text-slate-700 mt-1">{t.description}</div>}
+        <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {memberships.map(m => (
+            <li key={m.id} className="rounded-xl bg-white border border-slate-200 p-5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-semibold">{m.team.name}</div>
+                  <div className="text-xs text-slate-500 mt-1">slug: {m.team.slug}</div>
+                </div>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">{m.role}</span>
+              </div>
+              {m.team.description && (
+                <p className="text-sm text-slate-600 mt-2">{m.team.description}</p>
+              )}
+              <div className="text-xs text-slate-500 mt-3">
+                Joined {new Date(m.createdAt).toLocaleDateString()}
+              </div>
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="border-t border-slate-200 pt-8">
+        <h2 className="text-lg font-semibold mb-2">Create another team</h2>
+        <p className="text-sm text-slate-600 mb-4">
+          Useful if you operate multiple groups (e.g. <em>Frontend</em>, <em>Backend</em>). After
+          creating, the API key is shown once — copy it then.
+        </p>
+        <TeamRegisterForm />
       </section>
     </div>
   );
