@@ -1,4 +1,8 @@
-# Deploying LLM TeamWork
+# Deploying LLM TeamWork (nginx-front model)
+
+The host already runs nginx on 80/443 (alongside other vhosts), so the LLM
+TeamWork container binds **only to `127.0.0.1:3001`** and is fronted by an
+nginx vhost.
 
 ## TL;DR
 
@@ -6,117 +10,130 @@ On the target server (root or sudo):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/yhhj123/LLMTeamWork/claude/multi-agent-collaboration-platform-8IvIF/deploy/install.sh \
-  | DOMAIN=tm.9swt.com bash
+  | bash
 ```
 
-That's it. Within ~1 minute the stack is up at `https://tm.9swt.com/`
-with a real Let's Encrypt certificate (assuming DNS is pointed at the host
-and ports 80/443 are open).
-
-## What gets installed
-
-The script will:
-
-1. `apt-get install` git + curl + Docker if any are missing.
-2. `git clone` (or pull) the repo into `/opt/llm-teamwork`.
-3. Write `/opt/llm-teamwork/.env` with `DOMAIN=tm.9swt.com`.
-4. `docker compose up -d --build`, which starts:
-   - **app** — the Next.js server, listening on the internal docker network.
-   - **caddy** — reverse proxy on host ports 80/443 with automatic
-     Let's Encrypt cert renewal.
-5. Print health and the public URLs.
-
-## Prerequisites on the server
-
-- Ubuntu 20.04+ / Debian 11+ / RHEL 8+ (apt or yum). Other distros need manual
-  Docker install.
-- Public ports **80 and 443** open (Caddy needs both: 80 for ACME HTTP-01,
-  443 for HTTPS).
-- DNS A record for `tm.9swt.com` → this server's public IP.
-- Outbound HTTPS to `acme-v02.api.letsencrypt.org` and `get.docker.com`.
-
-## DNS
-
-```
-tm.9swt.com.  IN  A  101.37.79.117
-```
-
-After updating DNS, verify with:
+That brings up the app container at `http://127.0.0.1:3001/`. Verify with:
 
 ```bash
-dig +short tm.9swt.com
+curl -fsS http://127.0.0.1:3001/api/mcp
 ```
 
-If it returns the wrong IP (or nothing), wait for propagation before running
-the script — Caddy will keep retrying, but you'll get faster feedback.
+Then add the nginx vhost (next section).
+
+## Wire up nginx
+
+1. Copy `deploy/nginx/tm.9swt.com.conf` into the nginx config dir:
+
+   ```bash
+   cp /opt/llm-teamwork/deploy/nginx/tm.9swt.com.conf /etc/nginx/conf.d/
+   ```
+
+   Or pass `INSTALL_NGINX_CONF=1` to `install.sh` and it will copy it for you.
+
+2. Open the file and fix the cert paths to match what's on this box. Two
+   common cases:
+
+   - **Reuse an existing `*.9swt.com` wildcard cert** (whatever path your
+     other 9swt vhosts use):
+     ```nginx
+     ssl_certificate     /etc/nginx/ssl/9swt.com/fullchain.pem;
+     ssl_certificate_key /etc/nginx/ssl/9swt.com/privkey.pem;
+     ```
+   - **Issue a fresh per-host cert with certbot**:
+     ```bash
+     mkdir -p /var/www/letsencrypt
+     certbot certonly --webroot -w /var/www/letsencrypt -d tm.9swt.com
+     # ...gives you /etc/letsencrypt/live/tm.9swt.com/{fullchain,privkey}.pem
+     ```
+
+3. Reload nginx:
+
+   ```bash
+   nginx -t && systemctl reload nginx
+   ```
+
+4. Browse https://tm.9swt.com/.
+
+## Why this layout
+
+```
+                    Internet
+                       │
+                  443 ▼ 80
+            ┌──────────────────┐
+            │   host nginx     │  (already running, owns 80/443 + other vhosts)
+            └─────────┬────────┘
+                      │ proxy_pass
+                  3001▼ (loopback only)
+            ┌──────────────────┐
+            │  llm-teamwork    │  Docker container, Next.js standalone
+            │   (Next.js)      │
+            └─────────┬────────┘
+                      │
+                  /data volume
+                 (SQLite + uploads)
+```
+
+- The container is **not** reachable from the public internet.
+- Existing nginx vhosts on this box are unaffected.
+- Switching to a different proxy (Caddy/Traefik) later is a one-file change.
 
 ## Volumes / data
 
-- `data` (Docker named volume) — SQLite database + uploaded attachments.
-- `caddy_data` / `caddy_config` — Caddy's state including the TLS cert.
+- `data` — SQLite database + uploaded attachments. Inspect with:
 
-To back up:
+  ```bash
+  docker volume inspect llm-teamwork_data || \
+    docker volume inspect llmteamwork_data
+  ```
+
+Backup:
 
 ```bash
 docker run --rm \
-  -v llmteamwork_data:/data \
+  -v llm-teamwork_data:/data \
   -v "$(pwd)":/backup \
   alpine tar czf /backup/llm-teamwork-data-$(date +%F).tar.gz -C /data .
 ```
 
 ## Upgrading
 
-Re-run the same install command. It pulls the latest commit on the branch
-and runs `docker compose up -d --build`.
+Re-run the install command — it pulls the latest commit on the branch and
+rebuilds the image in place. No nginx changes needed unless the vhost spec
+itself was updated.
 
-## Without a domain (HTTP-only)
+## Choosing a different host port
 
-If you don't have a domain ready and just want to test on the server's IP:
+If `3001` is also in use:
 
 ```bash
-# On the server, after cloning:
-cd /opt/llm-teamwork
-docker compose -f docker-compose.yml up -d --build app
-
-# Map host port 80 -> app:3000 manually:
-docker run -d --name llm-teamwork-port \
-  --network llmteamwork_default \
-  -p 80:80 nginx:alpine \
-  sh -c 'echo "server { listen 80; location / { proxy_pass http://app:3000; } }" > /etc/nginx/conf.d/default.conf && nginx -g "daemon off;"'
+APP_HOST_PORT=3050 \
+curl -fsSL https://raw.githubusercontent.com/yhhj123/LLMTeamWork/claude/multi-agent-collaboration-platform-8IvIF/deploy/install.sh \
+  | bash
 ```
 
-…or simpler: edit `docker-compose.yml`, comment out the `caddy` service, and
-add `ports: ["80:3000"]` under `app`.
+Don't forget to update the `upstream` block in the nginx vhost.
 
 ## Postgres instead of SQLite
 
-For multi-replica or higher load, swap to Postgres:
-
-1. Edit `prisma/schema.prisma`: change `provider = "sqlite"` to `"postgresql"`.
-2. Add a `db` service to `docker-compose.yml`:
-   ```yaml
-   db:
-     image: postgres:16-alpine
-     environment:
-       POSTGRES_USER: llm
-       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-       POSTGRES_DB: llm_teamwork
-     volumes: [pgdata:/var/lib/postgresql/data]
-   ```
-3. In `app.environment`, set `DATABASE_URL=postgresql://llm:${POSTGRES_PASSWORD}@db:5432/llm_teamwork`.
-4. Re-run the install script.
+For multi-replica deployments, switch the Prisma datasource provider to
+`postgresql`, add a `db` service to `docker-compose.yml`, and set
+`DATABASE_URL=postgresql://user:pass@db:5432/llm_teamwork` on the app
+service. Re-run `install.sh`.
 
 ## Troubleshooting
 
 ```bash
-# Live logs
+# Container logs
 docker compose -f /opt/llm-teamwork/docker-compose.yml logs -f app
-docker compose -f /opt/llm-teamwork/docker-compose.yml logs -f caddy
 
-# Inspect cert status
-docker compose -f /opt/llm-teamwork/docker-compose.yml exec caddy \
-  caddy list-certificates
+# Confirm nothing else is on 3001
+ss -tlnp | grep ':3001'
 
-# Force re-issue a cert (after fixing DNS, etc.)
-docker compose -f /opt/llm-teamwork/docker-compose.yml restart caddy
+# Test the upstream directly (bypasses nginx)
+curl -fsS http://127.0.0.1:3001/
+
+# nginx tail
+tail -f /var/log/nginx/tm.9swt.com.error.log
 ```

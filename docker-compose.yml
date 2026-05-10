@@ -1,12 +1,13 @@
 # LLM TeamWork — production compose.
 #
-# Two services:
-#   - app:    the Next.js server (port 3000 internal, no host binding by default)
-#   - caddy:  HTTPS reverse proxy with automatic Let's Encrypt cert for $DOMAIN
+# Single-service stack. The app binds to 127.0.0.1:3001 on the host so a
+# host-level reverse proxy (nginx, Caddy, Traefik...) can terminate TLS and
+# forward to it. See deploy/README.md for how to wire up nginx with a
+# tm.9swt.com vhost.
 #
-# Configure DOMAIN in .env (or pass via env). Caddy will request and renew the
-# TLS cert automatically when port 80/443 are reachable from the public Internet.
-# DNS for $DOMAIN must point to this host.
+# Why localhost-only? Most production hosts already run nginx and you don't
+# want our container exposed to the public Internet directly. Binding to
+# 127.0.0.1 keeps it strictly internal.
 
 services:
   app:
@@ -16,8 +17,8 @@ services:
     image: llm-teamwork:latest
     container_name: llm-teamwork
     restart: unless-stopped
-    expose:
-      - "3000"
+    ports:
+      - "127.0.0.1:${APP_HOST_PORT:-3001}:3000"
     volumes:
       - data:/data
     environment:
@@ -30,23 +31,5 @@ services:
       retries: 3
       start_period: 20s
 
-  caddy:
-    image: caddy:2-alpine
-    container_name: llm-teamwork-caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    environment:
-      - DOMAIN=${DOMAIN:-tm.9swt.com}
-    depends_on:
-      - app
-
 volumes:
   data:
-  caddy_data:
-  caddy_config:

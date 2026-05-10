@@ -1,42 +1,43 @@
 #!/usr/bin/env bash
-# LLM TeamWork — one-shot server bootstrap.
+# LLM TeamWork — server bootstrap (nginx-front model).
+#
+# Brings up the LLM TeamWork app container on 127.0.0.1:$APP_HOST_PORT (default
+# 3001). Use this when the host already runs an nginx that owns 80/443; that
+# nginx then reverse-proxies tm.9swt.com to our container. See
+# deploy/nginx/tm.9swt.com.conf for the matching nginx vhost.
 #
 # Run on the target machine as root:
 #
 #   curl -fsSL https://raw.githubusercontent.com/yhhj123/LLMTeamWork/claude/multi-agent-collaboration-platform-8IvIF/deploy/install.sh \
-#     | DOMAIN=tm.9swt.com bash
+#     | bash
 #
-# What it does:
-#   1. Installs git + Docker + the Compose plugin if missing.
-#   2. Clones (or pulls) this repo into /opt/llm-teamwork.
-#   3. Writes /opt/llm-teamwork/.env with $DOMAIN.
-#   4. Builds the app image and brings up `app + caddy` via compose.
-#   5. Prints the public URLs.
-#
-# Re-running is safe; it acts as an upgrade-in-place.
+# Optional env vars:
+#   APP_HOST_PORT      host port to bind (default 3001)
+#   INSTALL_NGINX_CONF =1 to copy nginx vhost to /etc/nginx/conf.d/ and reload
+#   DOMAIN             vhost server_name (default tm.9swt.com)
 
 set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/yhhj123/LLMTeamWork.git}"
 BRANCH="${BRANCH:-claude/multi-agent-collaboration-platform-8IvIF}"
 DEST="${DEST:-/opt/llm-teamwork}"
+APP_HOST_PORT="${APP_HOST_PORT:-3001}"
 DOMAIN="${DOMAIN:-tm.9swt.com}"
+INSTALL_NGINX_CONF="${INSTALL_NGINX_CONF:-0}"
 
-log() { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
+log()  { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!! \033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31mxx \033[0m %s\n' "$*" >&2; exit 1; }
 
-[ "$(id -u)" -eq 0 ] || die "This script must be run as root (use sudo)."
+[ "$(id -u)" -eq 0 ] || die "Run as root (or via sudo)."
 
-log "Preparing apt..."
+log "Ensuring git, curl, docker are installed..."
 export DEBIAN_FRONTEND=noninteractive
 if command -v apt-get >/dev/null 2>&1; then
   apt-get update -qq
   apt-get install -yqq ca-certificates curl git
 elif command -v yum >/dev/null 2>&1; then
   yum install -y ca-certificates curl git
-else
-  warn "Unknown package manager; assuming git + curl are already installed."
 fi
 
 if ! command -v docker >/dev/null 2>&1; then
@@ -44,15 +45,13 @@ if ! command -v docker >/dev/null 2>&1; then
   curl -fsSL https://get.docker.com | sh
 fi
 
-# Compose plugin: prefer `docker compose`; fall back to legacy `docker-compose` if needed.
 if ! docker compose version >/dev/null 2>&1; then
   if command -v apt-get >/dev/null 2>&1; then
     apt-get install -yqq docker-compose-plugin || true
   fi
 fi
-if ! docker compose version >/dev/null 2>&1; then
-  die "docker compose plugin not available; install it manually then re-run."
-fi
+docker compose version >/dev/null 2>&1 \
+  || die "docker compose plugin missing; install it manually."
 
 systemctl enable --now docker >/dev/null 2>&1 || true
 
@@ -67,40 +66,58 @@ fi
 
 cd "$DEST"
 
-log "Writing .env (DOMAIN=$DOMAIN)"
-printf 'DOMAIN=%s\n' "$DOMAIN" > .env
-chmod 600 .env
+# Sanity-check the host port is free (nginx, etc., must not own it).
+if ss -tlnp 2>/dev/null | awk '{print $4}' | grep -E "(:|^)${APP_HOST_PORT}$" >/dev/null; then
+  warn "Port ${APP_HOST_PORT} on the host is already in use. Set APP_HOST_PORT to a free port and re-run."
+fi
 
-log "Building image and bringing up the stack..."
-docker compose pull --ignore-pull-failures || true
-docker compose up -d --build --remove-orphans
+log "Building image and bringing up the app container..."
+APP_HOST_PORT="$APP_HOST_PORT" docker compose up -d --build --remove-orphans
 
 log "Waiting for healthcheck..."
-for i in $(seq 1 30); do
-  if docker compose ps --status running --services | grep -q '^app$'; then
-    if docker inspect --format '{{.State.Health.Status}}' llm-teamwork 2>/dev/null | grep -q healthy; then
-      break
-    fi
-  fi
+for _ in $(seq 1 30); do
+  state=$(docker inspect --format '{{.State.Health.Status}}' llm-teamwork 2>/dev/null || echo unknown)
+  [ "$state" = "healthy" ] && break
   sleep 2
 done
-
 docker compose ps
+
+if [ "$INSTALL_NGINX_CONF" = "1" ]; then
+  log "Installing nginx vhost for $DOMAIN..."
+  CONF_SRC="$DEST/deploy/nginx/tm.9swt.com.conf"
+  CONF_DST="/etc/nginx/conf.d/${DOMAIN}.conf"
+  if [ ! -d /etc/nginx/conf.d ]; then
+    die "/etc/nginx/conf.d not found; install nginx config manually."
+  fi
+  if [ "$DOMAIN" != "tm.9swt.com" ]; then
+    sed "s/tm\\.9swt\\.com/${DOMAIN}/g" "$CONF_SRC" > "$CONF_DST"
+  else
+    cp "$CONF_SRC" "$CONF_DST"
+  fi
+  warn "nginx vhost copied to $CONF_DST."
+  warn "Edit it to set the correct ssl_certificate / ssl_certificate_key paths,"
+  warn "then run: nginx -t && systemctl reload nginx"
+fi
 
 cat <<EOF
 
-\033[1;32mDeployment complete.\033[0m
+Deployment complete.
 
-  Web UI / API : https://${DOMAIN}/
-  MCP endpoint : https://${DOMAIN}/api/mcp
-  Docs page    : https://${DOMAIN}/docs
+  App listening at: http://127.0.0.1:${APP_HOST_PORT}/  (loopback only)
+  Container name : llm-teamwork
+  Volume         : llm_teamwork_data (or 'llmteamwork_data' depending on compose project name)
 
-DNS check: \`dig +short ${DOMAIN}\` should return this server's IP.
-If it doesn't yet, point an A record to it; Caddy will then issue the
-TLS certificate within ~30 seconds.
+Next steps to expose it on https://${DOMAIN}/ :
 
-Useful commands:
+  1. Drop deploy/nginx/tm.9swt.com.conf into /etc/nginx/conf.d/ and adjust
+     ssl_certificate paths to a cert you already have, e.g. a *.9swt.com
+     wildcard. (Or re-run with INSTALL_NGINX_CONF=1 to copy automatically.)
+  2. nginx -t && systemctl reload nginx
+
+Local probe to verify the container itself is fine:
+
+  curl -fsS http://127.0.0.1:${APP_HOST_PORT}/api/mcp
+
+Logs:
   docker compose -f $DEST/docker-compose.yml logs -f app
-  docker compose -f $DEST/docker-compose.yml logs -f caddy
-  docker compose -f $DEST/docker-compose.yml restart
 EOF
