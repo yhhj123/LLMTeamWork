@@ -3,7 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
 import { Markdown } from "@/components/Markdown";
+import { injectTeamMentions } from "@/lib/mentions";
 import { InviteTeamForm } from "./invite-form";
+import { ArchitectureSection } from "./architecture-section";
+import { ScopeEditor } from "./scope-form";
 
 export const dynamic = "force-dynamic";
 
@@ -26,11 +29,20 @@ export default async function ProjectPage({ params }: { params: { id: string } }
   });
   if (!project) notFound();
 
-  // Gate the invite form on: the user belongs to at least one team that's
-  // already a project member. That same team becomes the inviter on submit.
   const userTeamIds = new Set(user.teams.map(t => t.id));
   const memberTeamIds = new Set(project.memberships.map(m => m.teamId));
   const userHasMemberTeam = [...userTeamIds].some(id => memberTeamIds.has(id));
+
+  // Owner-team membership for the user (= can edit architecture).
+  const userIsOwner = project.memberships.some(
+    m => m.role === "owner" && userTeamIds.has(m.teamId)
+  );
+
+  // For @mention resolution inside the architecture markdown.
+  const projectTeams = project.memberships.map(m => m.team);
+  const renderedArch = project.architecture
+    ? injectTeamMentions(project.architecture, projectTeams)
+    : "";
 
   const grouped: Record<string, typeof project.threads> = {};
   for (const status of STATUS_COLUMNS) grouped[status] = [];
@@ -52,27 +64,66 @@ export default async function ProjectPage({ params }: { params: { id: string } }
         )}
       </header>
 
+      <ArchitectureSection
+        projectId={project.id}
+        canEdit={userIsOwner}
+        rawSource={project.architecture ?? ""}
+      >
+        {project.architecture ? (
+          <div className="rounded-xl bg-white border border-slate-200 p-5">
+            <Markdown>{renderedArch}</Markdown>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
+            No architecture document yet.
+            {userIsOwner
+              ? ' Click "+ Add architecture" to write one (supports mermaid diagrams).'
+              : " The project owner team can add one."}
+          </div>
+        )}
+      </ArchitectureSection>
+
       <section>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="font-semibold">Teams ({project.memberships.length})</h2>
         </div>
-        <ul className="flex flex-wrap gap-2">
-          {project.memberships.map(m => (
-            <li
-              key={m.id}
-              className="rounded-full bg-white border border-slate-200 px-3 py-1 text-sm"
-              title={`slug: ${m.team.slug}`}
-            >
-              {userTeamIds.has(m.team.id) ? (
-                <Link href={`/teams/${m.team.id}`} className="no-underline hover:text-accent">
-                  {m.team.name}
-                </Link>
-              ) : (
-                <span>{m.team.name}</span>
-              )}{" "}
-              <span className="text-slate-400 text-xs">({m.role})</span>
-            </li>
-          ))}
+        <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {project.memberships.map(m => {
+            const isMyTeam = userTeamIds.has(m.team.id);
+            const canEditScope = isMyTeam || userIsOwner;
+            return (
+              <li
+                key={m.id}
+                className="rounded-xl bg-white border border-slate-200 p-3 space-y-2"
+                title={`slug: ${m.team.slug}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  {isMyTeam ? (
+                    <Link
+                      href={`/teams/${m.team.id}`}
+                      className="font-medium text-sm text-slate-800 no-underline hover:text-accent"
+                    >
+                      {m.team.name}
+                    </Link>
+                  ) : (
+                    <span className="font-medium text-sm text-slate-800">{m.team.name}</span>
+                  )}
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">{m.role}</span>
+                </div>
+                {canEditScope ? (
+                  <ScopeEditor
+                    projectId={project.id}
+                    teamId={m.team.id}
+                    initialScope={m.scope ?? ""}
+                  />
+                ) : (
+                  <div className="text-xs text-slate-600">
+                    {m.scope || <em className="text-slate-400">no scope set</em>}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
 
         {userHasMemberTeam ? (
@@ -104,7 +155,10 @@ export default async function ProjectPage({ params }: { params: { id: string } }
               </div>
               <ul className="space-y-2">
                 {grouped[status].map(t => (
-                  <li key={t.id} className="rounded-lg bg-white border border-slate-200 p-3 hover:border-slate-300 transition-colors">
+                  <li
+                    key={t.id}
+                    className="rounded-lg bg-white border border-slate-200 p-3 hover:border-slate-300 transition-colors"
+                  >
                     <Link
                       href={`/threads/${t.id}`}
                       className="block text-sm font-medium text-slate-800 hover:text-accent no-underline leading-snug line-clamp-3"

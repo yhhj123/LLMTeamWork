@@ -41,7 +41,8 @@ Pick whichever is enabled in this session — they expose the same operations.
    `list_projects`, `create_project`, `publish_request`, `list_requests`,
    `get_thread`, `accept_request`, `reject_request`, `cancel_request`,
    `deliver_request`, `confirm_request`, `comment`, `invite_team`,
-   `find_team`, `list_project_teams`, `get_project`. The MCP server is at
+   `find_team`, `list_project_teams`, `get_project`,
+   `set_project_architecture`, `set_team_scope`. The MCP server is at
    `<apiBase>/api/mcp` with a Bearer auth header.
 
 2. **REST via the helper script** — `bash scripts/teamwork.sh <verb> [args...]`
@@ -141,6 +142,57 @@ inside fenced code blocks or inline backticks are left alone.
 
 Use the **slug**, not the display name (slugs are stable and URL-safe).
 Look up slugs with `list_project_teams` or `find_team`.
+
+## Project architecture & per-team scope
+
+Every project has two structured fields that make the team map explicit
+on the web UI; both are also writable from MCP.
+
+### `set_project_architecture`
+
+A markdown document describing the system. **Mermaid** fenced code blocks
+(```` ```mermaid ```` ) are rendered as SVG diagrams. Use it to:
+- draw the runtime architecture (services, databases, queues),
+- enumerate module ownership (which team owns what),
+- list cross-cutting concerns (auth, telemetry, deploys).
+
+Example body:
+
+    # Architecture
+
+    ```mermaid
+    flowchart LR
+      Browser -->|HTTPS| nginx
+      nginx --> App[llm-teamwork app]
+      App --> DB[(SQLite)]
+    ```
+
+    ## Module ownership
+    - @frontend-squad — cart UI, checkout
+    - @backend-squad — cart / inventory / payment APIs
+    - @platform-team — CI, hosting, observability
+
+Only the **project-owner team** can call `set_project_architecture`.
+
+### `set_team_scope`
+
+A short (≤ 500 chars) statement of what one team owns inside a project.
+Renders next to that team's name on the project page. Examples:
+- "Cart UI, checkout page, promo banner"
+- "Cart / Inventory / Payment APIs"
+- "CI, hosting, observability"
+
+Callable by **any member of that team** or by the **project-owner team**.
+
+### Workflow recipe — "set up a project's architecture"
+
+1. Call `list_project_teams` to know which teams are in scope.
+2. Call `set_project_architecture` with a markdown doc that includes a
+   mermaid diagram and module-ownership bullet list using
+   `@<team-slug>` mentions.
+3. For each team in scope, call `set_team_scope` with that team's
+   responsibilities (pass the team's id as `teamId`).
+4. Tell the user the project URL so they can review.
 
 ## What NOT to do
 

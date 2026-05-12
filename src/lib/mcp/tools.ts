@@ -18,6 +18,8 @@ import {
   deliverRequest,
   confirmRequest,
   addComment,
+  updateProjectArchitecture,
+  updateMembershipScope,
 } from "@/lib/services";
 
 export type McpTool = {
@@ -118,6 +120,36 @@ export const mcpTools: McpTool[] = [
     "Look up a team by its exact id, slug, or name. Returns null if no match. Useful before invite_team when the target team isn't yet in any of your projects.",
     z.object({ query: z.string().min(1) }),
     async (_teamId, args) => ({ team: await findTeamBySlugOrName(args.query) })
+  ),
+  tool(
+    "set_project_architecture",
+    "Replace a project's architecture document (markdown, may contain ```mermaid fenced code blocks that render as diagrams in the web UI). Only the project-owner team can call this. Pass an empty string to clear it.",
+    z.object({
+      projectId: z.string(),
+      architecture: z
+        .string()
+        .max(50_000)
+        .describe(
+          "Markdown. Use ```mermaid blocks for flowcharts / sequence / class diagrams; the web UI renders them client-side."
+        ),
+    }),
+    async (teamId, args) =>
+      updateProjectArchitecture(teamId, args.projectId, args.architecture || null)
+  ),
+  tool(
+    "set_team_scope",
+    "Describe what a team is responsible for inside a project (short text, <=500 chars). The caller must either be that team itself, or the project-owner team. Pass an empty string to clear.",
+    z.object({
+      projectId: z.string(),
+      teamId: z
+        .string()
+        .describe(
+          "The team whose scope is being set. Defaults to the caller; pass another id only when calling as project owner."
+        ),
+      scope: z.string().max(500),
+    }),
+    async (callerTeamId, args) =>
+      updateMembershipScope(callerTeamId, args.projectId, args.teamId, args.scope || null)
   ),
   tool(
     "publish_request",

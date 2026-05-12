@@ -5,7 +5,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireUser, assertUserInTeam } from "@/lib/session";
-import { createProject, inviteTeamToProject } from "@/lib/services";
+import {
+  createProject,
+  inviteTeamToProject,
+  updateProjectArchitecture,
+  updateMembershipScope,
+} from "@/lib/services";
 
 const NewProjectSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(80),
@@ -92,4 +97,104 @@ export async function inviteTeamAction(
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Failed to invite team" };
   }
+}
+
+// ----- Architecture editing ----------------------------------------------
+
+const ArchSchema = z.object({
+  projectId: z.string().min(1),
+  architecture: z.string().max(50_000).optional().or(z.literal("").transform(() => undefined)),
+});
+
+export type ArchitectureResult = { ok?: true; error?: string };
+
+export async function updateArchitectureAction(
+  _prev: ArchitectureResult,
+  form: FormData
+): Promise<ArchitectureResult> {
+  const user = await requireUser();
+  const parsed = ArchSchema.safeParse({
+    projectId: form.get("projectId"),
+    architecture: form.get("architecture") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  // Find a team the user belongs to that owns this project.
+  const userTeamIds = user.teams.map(t => t.id);
+  const owner = await prisma.membership.findFirst({
+    where: {
+      projectId: parsed.data.projectId,
+      role: "owner",
+      teamId: { in: userTeamIds },
+    },
+    select: { teamId: true },
+  });
+  if (!owner) {
+    return { error: "Only members of the project-owner team can edit the architecture." };
+  }
+  try {
+    await updateProjectArchitecture(
+      owner.teamId,
+      parsed.data.projectId,
+      parsed.data.architecture ?? null
+    );
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Failed to update architecture" };
+  }
+  revalidatePath(`/projects/${parsed.data.projectId}`);
+  return { ok: true };
+}
+
+const ScopeSchema = z.object({
+  projectId: z.string().min(1),
+  teamId: z.string().min(1),
+  scope: z.string().max(500).optional().or(z.literal("").transform(() => undefined)),
+});
+
+export type ScopeResult = { ok?: true; error?: string };
+
+export async function updateScopeAction(
+  _prev: ScopeResult,
+  form: FormData
+): Promise<ScopeResult> {
+  const user = await requireUser();
+  const parsed = ScopeSchema.safeParse({
+    projectId: form.get("projectId"),
+    teamId: form.get("teamId"),
+    scope: form.get("scope") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  const userTeamIds = user.teams.map(t => t.id);
+  // Caller team is preferably the team being edited (if user belongs to it),
+  // otherwise the owner team they belong to.
+  let callerTeamId: string | null = null;
+  if (userTeamIds.includes(parsed.data.teamId)) {
+    callerTeamId = parsed.data.teamId;
+  } else {
+    const owner = await prisma.membership.findFirst({
+      where: {
+        projectId: parsed.data.projectId,
+        role: "owner",
+        teamId: { in: userTeamIds },
+      },
+      select: { teamId: true },
+    });
+    callerTeamId = owner?.teamId ?? null;
+  }
+  if (!callerTeamId) {
+    return { error: "You can only edit scope for a team you belong to, or as project owner." };
+  }
+  try {
+    await updateMembershipScope(
+      callerTeamId,
+      parsed.data.projectId,
+      parsed.data.teamId,
+      parsed.data.scope ?? null
+    );
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Failed to update scope" };
+  }
+  revalidatePath(`/projects/${parsed.data.projectId}`);
+  return { ok: true };
 }

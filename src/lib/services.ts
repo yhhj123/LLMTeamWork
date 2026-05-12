@@ -127,7 +127,66 @@ export async function listProjectMembers(projectId: string) {
     where: { projectId },
     include: { team: true },
   });
-  return ms.map(m => ({ ...toPublicTeam(m.team), role: m.role }));
+  return ms.map(m => ({ ...toPublicTeam(m.team), role: m.role, scope: m.scope }));
+}
+
+/**
+ * Replace a project's architecture document (markdown, may contain mermaid
+ * code blocks). The caller's team must be an `owner` of the project.
+ */
+export async function updateProjectArchitecture(
+  callerTeamId: string,
+  projectId: string,
+  architecture: string | null
+) {
+  const m = await prisma.membership.findUnique({
+    where: { teamId_projectId: { teamId: callerTeamId, projectId } },
+  });
+  if (!m) throw new HttpError(403, "Your team is not a member of this project.");
+  if (m.role !== "owner") {
+    throw new HttpError(403, "Only the project owner team can edit the architecture document.");
+  }
+  if (architecture && architecture.length > 50_000) {
+    throw new HttpError(422, "Architecture document is too long (max 50k characters).");
+  }
+  const updated = await prisma.project.update({
+    where: { id: projectId },
+    data: { architecture: architecture && architecture.length ? architecture : null },
+  });
+  return toPublicProject(updated);
+}
+
+/**
+ * Set what a given team owns in a given project. Callable by any member of
+ * that team, or by the project-owner team.
+ */
+export async function updateMembershipScope(
+  callerTeamId: string,
+  projectId: string,
+  teamId: string,
+  scope: string | null
+) {
+  const callerMembership = await prisma.membership.findUnique({
+    where: { teamId_projectId: { teamId: callerTeamId, projectId } },
+  });
+  if (!callerMembership) {
+    throw new HttpError(403, "Your team is not a member of this project.");
+  }
+  if (teamId !== callerTeamId && callerMembership.role !== "owner") {
+    throw new HttpError(
+      403,
+      "Only the team itself or the project-owner team can edit a team's scope."
+    );
+  }
+  if (scope && scope.length > 500) {
+    throw new HttpError(422, "Scope is too long (max 500 characters).");
+  }
+  const m = await prisma.membership.update({
+    where: { teamId_projectId: { teamId, projectId } },
+    data: { scope: scope && scope.length ? scope : null },
+    include: { team: true },
+  });
+  return { ...toPublicTeam(m.team), role: m.role, scope: m.scope };
 }
 
 export async function inviteTeamToProject(
