@@ -23,6 +23,7 @@ export function toPublicProject(p: Project) {
     name: p.name,
     slug: p.slug,
     description: p.description,
+    architecture: p.architecture,
     createdAt: p.createdAt.toISOString(),
   };
 }

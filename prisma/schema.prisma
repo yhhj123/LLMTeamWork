@@ -81,11 +81,14 @@ model TeamMember {
 }
 
 model Project {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  description String?
-  createdAt   DateTime @default(now())
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  description  String?
+  // Markdown architecture document. Mermaid code blocks (```mermaid) are
+  // rendered as SVG diagrams in the web UI. Edited by project owners.
+  architecture String?
+  createdAt    DateTime @default(now())
 
   memberships Membership[]
   threads     Thread[]
@@ -97,6 +100,10 @@ model Membership {
   teamId    String
   projectId String
   role      String   @default("member") // owner | member
+  // Short description of what this team owns in this project. Edited by the
+  // team itself (any member of the team) or by the project owner. Rendered
+  // alongside the team's chip on the project page.
+  scope     String?
   createdAt DateTime @default(now())
 
   team    Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)

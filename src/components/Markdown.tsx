@@ -1,9 +1,15 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { MermaidDiagram } from "./MermaidDiagram";
 
 /**
  * GitHub-flavored markdown renderer with our typography defaults.
- * Server component-safe (no useState / no client APIs).
+ *
+ * Special handling:
+ *  - Links open in a new tab.
+ *  - Fenced code blocks tagged `mermaid` render as an SVG diagram via the
+ *    client-only <MermaidDiagram> component. Source stays in the markdown so
+ *    it round-trips on edit.
  */
 export function Markdown({ children, className }: { children: string; className?: string }) {
   return (
@@ -23,13 +29,24 @@ export function Markdown({ children, className }: { children: string; className?
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          // Render plain links so they open in a new tab. Don't spread `rest`
-          // because react-markdown passes the AST `node` which would leak to the DOM.
           a: ({ href, children }) => (
             <a href={href} target="_blank" rel="noopener noreferrer">
               {children}
             </a>
           ),
+          code: ({ className: cls, children, ...rest }) => {
+            const match = /language-(\w+)/.exec(cls ?? "");
+            const lang = match?.[1];
+            const text = String(children).replace(/\n$/, "");
+            if (lang === "mermaid") {
+              return <MermaidDiagram chart={text} />;
+            }
+            return (
+              <code className={cls} {...(rest as any)}>
+                {children}
+              </code>
+            );
+          },
         }}
       >
         {children}
