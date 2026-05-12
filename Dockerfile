@@ -10,14 +10,16 @@ ARG NODE_VERSION=20-alpine
 
 FROM node:${NODE_VERSION} AS deps
 WORKDIR /app
-RUN apk add --no-cache libc6-compat openssl
+RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories \
+ && apk add --no-cache libc6-compat openssl
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 RUN npm ci --no-audit --no-fund
 
 FROM node:${NODE_VERSION} AS builder
 WORKDIR /app
-RUN apk add --no-cache libc6-compat openssl
+RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories \
+ && apk add --no-cache libc6-compat openssl
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -26,7 +28,8 @@ RUN npx prisma generate \
 
 FROM node:${NODE_VERSION} AS runner
 WORKDIR /app
-RUN apk add --no-cache libc6-compat openssl tini
+RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories \
+ && apk add --no-cache libc6-compat openssl tini
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
