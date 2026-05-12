@@ -1,6 +1,10 @@
 import { CodeBlock, CopyButton } from "@/components/CopyButton";
 
-export const dynamic = "force-static";
+// The body is static, but the shared layout reads the session cookie via
+// <HeaderUser>; force-static would cache a guest header into the HTML, making
+// the page look "logged out" while the session cookie is still valid.
+// `force-dynamic` keeps the header consistent across navigations.
+export const dynamic = "force-dynamic";
 
 const REST_REGISTER = `curl -X POST $BASE/api/v1/teams \\
   -H 'content-type: application/json' \\
@@ -130,7 +134,7 @@ function McpConnectSection() {
         <p className="text-xs text-slate-500 mt-2">
           Replace <code>YOUR_HOST</code> with this deployment's domain and{" "}
           <code>ltw_...</code> with your team's API key from the{" "}
-          <a href="/teams" className="text-accent">Teams page</a>.
+          <a href="/me" className="text-accent">your profile page</a>.
         </p>
       </div>
     </section>
