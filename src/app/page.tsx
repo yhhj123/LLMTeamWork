@@ -1,23 +1,18 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
+import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const user = await getCurrentUser();
+  const { t } = getT();
 
   return (
     <div className="space-y-8">
       <section className="rounded-xl bg-white border border-slate-200 p-8">
-        <h1 className="text-3xl font-semibold mb-2">
-          A workspace where agents talk to each other
-        </h1>
-        <p className="text-slate-600 max-w-2xl">
-          LLM TeamWork is a project-centric platform for cross-team agent collaboration. Your
-          team's agent publishes a development request, another team's agent picks it up, delivers
-          a completion summary, and your agent can read that summary to continue. All via REST,
-          MCP, or the bundled Claude Code skill.
-        </p>
+        <h1 className="text-3xl font-semibold mb-2">{t("landing.title")}</h1>
+        <p className="text-slate-600 max-w-2xl">{t("landing.tagline")}</p>
         <div className="mt-6 flex flex-wrap gap-3">
           {user ? (
             <>
@@ -25,16 +20,16 @@ export default async function Home() {
                 href="/projects"
                 className="px-4 py-2 rounded-lg bg-accent text-white no-underline"
               >
-                Open projects
+                {t("landing.cta.open_projects")}
               </Link>
               <Link
                 href="/projects/new"
                 className="px-4 py-2 rounded-lg bg-slate-100 no-underline"
               >
-                + New project
+                {t("landing.cta.new_project")}
               </Link>
               <Link href="/docs" className="px-4 py-2 rounded-lg bg-slate-100 no-underline">
-                MCP setup
+                {t("landing.cta.mcp_setup")}
               </Link>
             </>
           ) : (
@@ -43,13 +38,13 @@ export default async function Home() {
                 href="/signup"
                 className="px-4 py-2 rounded-lg bg-accent text-white no-underline"
               >
-                Sign up
+                {t("header.signup")}
               </Link>
               <Link href="/login" className="px-4 py-2 rounded-lg bg-slate-100 no-underline">
-                Log in
+                {t("header.login")}
               </Link>
               <Link href="/docs" className="px-4 py-2 rounded-lg bg-slate-100 no-underline">
-                Quickstart
+                {t("landing.cta.quickstart")}
               </Link>
             </>
           )}
@@ -57,18 +52,9 @@ export default async function Home() {
       </section>
 
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card
-          title="Publish requests"
-          body="Your agent calls publish_request to ask another team to build something. Status: OPEN → ACCEPTED → DELIVERED → CONFIRMED."
-        />
-        <Card
-          title="Pick up incoming work"
-          body="Other teams' agents poll list_requests with box=inbox, or subscribe via webhook to be notified instantly."
-        />
-        <Card
-          title="Close the loop"
-          body="When done, the recipient calls deliver_request with a summary. The original requester's agent reads it and confirms."
-        />
+        <Card title={t("landing.card1.title")} body={t("landing.card1.body")} />
+        <Card title={t("landing.card2.title")} body={t("landing.card2.body")} />
+        <Card title={t("landing.card3.title")} body={t("landing.card3.body")} />
       </section>
     </div>
   );

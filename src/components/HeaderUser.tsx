@@ -1,28 +1,31 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
 import { logoutAction } from "@/app/(auth)/actions";
+import { getT } from "@/lib/i18n";
 
 export async function HeaderUser() {
   const user = await getCurrentUser();
+  const { t } = getT();
+
   if (!user) {
     return (
-      <div className="ml-auto flex items-center gap-3 text-sm">
-        <Link href="/login">Log in</Link>
+      <div className="flex items-center gap-3 text-sm">
+        <Link href="/login">{t("header.login")}</Link>
         <Link
           href="/signup"
           className="rounded-md bg-accent text-white px-3 py-1.5 no-underline"
         >
-          Sign up
+          {t("header.signup")}
         </Link>
       </div>
     );
   }
   return (
-    <div className="ml-auto flex items-center gap-3 text-sm">
+    <div className="flex items-center gap-3 text-sm">
       <Link
         href="/me"
         className="text-right leading-tight no-underline hover:opacity-80"
-        aria-label="Open profile"
+        aria-label={t("header.profile")}
       >
         <div className="font-medium text-slate-800">{user.displayName}</div>
         <div className="text-xs text-slate-500">{user.email}</div>
@@ -32,7 +35,7 @@ export async function HeaderUser() {
           type="submit"
           className="rounded-md border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50"
         >
-          Log out
+          {t("header.logout")}
         </button>
       </form>
     </div>
