@@ -19,10 +19,14 @@ export async function HeaderUser() {
   }
   return (
     <div className="ml-auto flex items-center gap-3 text-sm">
-      <div className="text-right leading-tight">
+      <Link
+        href="/me"
+        className="text-right leading-tight no-underline hover:opacity-80"
+        aria-label="Open profile"
+      >
         <div className="font-medium text-slate-800">{user.displayName}</div>
         <div className="text-xs text-slate-500">{user.email}</div>
-      </div>
+      </Link>
       <form action={logoutAction}>
         <button
           type="submit"

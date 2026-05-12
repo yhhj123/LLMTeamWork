@@ -4,12 +4,28 @@
 // We do a single DB lookup per request to fetch the user. There's no JWT
 // or in-memory caching — keeps revocation trivial and avoids signing keys.
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "./db";
 
 export const SESSION_COOKIE = "ltw_session";
 const SESSION_TTL_DAYS = 30;
+
+/**
+ * Decide whether the session cookie should be marked Secure.
+ *
+ * Secure cookies are dropped by the browser when sent over plain HTTP, so we
+ * cannot blindly enable it just because NODE_ENV=production — the user might
+ * still be on http://... while a TLS cert is being set up. We auto-detect from
+ * the forwarded proto header (set by nginx/Caddy/etc) per request.
+ */
+function getCookieSecure(): boolean {
+  const env = process.env.COOKIE_SECURE;
+  if (env === "true") return true;
+  if (env === "false") return false;
+  const proto = headers().get("x-forwarded-proto");
+  return proto === "https";
+}
 
 export async function createSession(userId: string) {
   const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 24 * 3600 * 1000);
@@ -19,7 +35,7 @@ export async function createSession(userId: string) {
   cookies().set(SESSION_COOKIE, session.id, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: getCookieSecure(),
     path: "/",
     expires: expiresAt,
   });
