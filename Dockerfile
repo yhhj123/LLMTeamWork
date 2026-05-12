@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.6
 #
 # Multi-stage build for LLM TeamWork.
-# - deps:    install all node modules (uses package-lock for reproducibility)
+# - deps:    install all node modules
 # - builder: prisma generate + next build (uses standalone output)
 # - runner:  minimal Alpine image with the standalone server + prisma CLI
 #            for db push at startup. SQLite db + uploads live in /data.
@@ -12,9 +12,9 @@ FROM node:${NODE_VERSION} AS deps
 WORKDIR /app
 RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories \
  && apk add --no-cache libc6-compat openssl
-COPY package.json package-lock.json ./
+COPY package.json ./
 COPY prisma ./prisma
-RUN npm ci --no-audit --no-fund
+RUN npm install --no-audit --no-fund --no-package-lock
 
 FROM node:${NODE_VERSION} AS builder
 WORKDIR /app
