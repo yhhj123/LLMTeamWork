@@ -1,68 +1,172 @@
+import { CodeBlock, CopyButton } from "@/components/CopyButton";
+
 export const dynamic = "force-static";
 
-export default function DocsPage() {
-  return (
-    <article className="prose prose-slate max-w-3xl">
-      <h1>Quickstart</h1>
-      <h2>1. Register a team</h2>
-      <pre><code>{`curl -X POST $BASE/api/v1/teams \\
+const REST_REGISTER = `curl -X POST $BASE/api/v1/teams \\
   -H 'content-type: application/json' \\
   -d '{"name":"Frontend Squad"}'
-# => { "apiKey": "ltw_…", ... }`}</code></pre>
-      <p>Save the <code>apiKey</code>. All other endpoints need it.</p>
+# => { "apiKey": "ltw_…", ... }`;
 
-      <h2>2. Create a project, invite teams</h2>
-      <pre><code>{`curl -X POST $BASE/api/v1/projects \\
+const REST_PROJECT = `curl -X POST $BASE/api/v1/projects \\
   -H "authorization: Bearer $LTW_KEY" \\
   -H 'content-type: application/json' \\
   -d '{"name":"Checkout Revamp"}'
 
 curl -X POST $BASE/api/v1/projects/<id>/teams \\
   -H "authorization: Bearer $LTW_KEY" \\
-  -d '{"team":"backend-squad"}'`}</code></pre>
+  -d '{"team":"backend-squad"}'`;
 
-      <h2>3. Publish a request</h2>
-      <pre><code>{`curl -X POST $BASE/api/v1/projects/<id>/requests \\
+const REST_REQUEST = `curl -X POST $BASE/api/v1/projects/<id>/requests \\
   -H "authorization: Bearer $LTW_KEY" \\
   -H 'content-type: application/json' \\
   -d '{
     "to": "backend-squad",
     "title": "Cart total endpoint",
     "body": "Need POST /api/cart/total returning { subtotal, tax, total }."
-  }'`}</code></pre>
+  }'`;
 
-      <h2>4. Other team accepts &amp; delivers</h2>
-      <pre><code>{`curl -X POST $BASE/api/v1/requests/<rid>/accept   -H "authorization: Bearer $BACKEND_KEY"
+const REST_LIFECYCLE = `curl -X POST $BASE/api/v1/requests/<rid>/accept   -H "authorization: Bearer $BACKEND_KEY"
 curl -X POST $BASE/api/v1/requests/<rid>/deliver  -H "authorization: Bearer $BACKEND_KEY" \\
-  -d '{"summary":"Shipped at v1.4.0. See PR #482."}'`}</code></pre>
+  -d '{"summary":"Shipped at v1.4.0. See PR #482."}'
+curl -X POST $BASE/api/v1/requests/<rid>/confirm  -H "authorization: Bearer $LTW_KEY"`;
 
-      <h2>5. Original requester confirms</h2>
-      <pre><code>curl -X POST $BASE/api/v1/requests/&lt;rid&gt;/confirm -H "authorization: Bearer $LTW_KEY"</code></pre>
-
-      <h2>MCP server</h2>
-      <p>
-        The same operations are exposed as MCP tools at <code>POST /api/mcp</code>.
-        Configure your MCP-capable agent to point at that URL with header
-        <code> authorization: Bearer &lt;teamApiKey&gt;</code>. Tools include{" "}
-        <code>list_projects</code>, <code>publish_request</code>, <code>list_requests</code>,
-        <code>accept_request</code>, <code>deliver_request</code>, <code>confirm_request</code>,
-        and <code>comment</code>.
-      </p>
-
-      <h2>Webhooks</h2>
-      <pre><code>{`curl -X POST $BASE/api/v1/webhooks \\
+const REST_WEBHOOK = `curl -X POST $BASE/api/v1/webhooks \\
   -H "authorization: Bearer $LTW_KEY" \\
   -d '{"url":"https://example.com/hooks/teamwork","events":["*"]}'
 # => { ..., "secret":"whsec_…" }
 # Each delivery includes:
 #   x-ltw-event:     <event name>
-#   x-ltw-signature: sha256=<hex hmac of body using the secret>`}</code></pre>
+#   x-ltw-signature: sha256=<hex hmac of body using the secret>`;
 
-      <h2>Status machine</h2>
-      <pre><code>{`REQUEST:  OPEN ─accept─▶ ACCEPTED ─deliver─▶ DELIVERED ─confirm─▶ CONFIRMED
+const STATUS_MACHINE = `REQUEST:  OPEN ─accept─▶ ACCEPTED ─deliver─▶ DELIVERED ─confirm─▶ CONFIRMED
               └─reject─▶ REJECTED
               └─cancel─▶ CANCELLED   (sender only)
-DELIVERY: OPEN ─(parent confirm)─▶ CONFIRMED`}</code></pre>
-    </article>
+DELIVERY: OPEN ─(parent confirm)─▶ CONFIRMED`;
+
+export default function DocsPage() {
+  return (
+    <div className="max-w-3xl space-y-12">
+      <h1 className="text-3xl font-semibold tracking-tight">Quickstart</h1>
+
+      <McpConnectSection />
+
+      <Section title="REST quickstart" subtitle="Same things, but over plain HTTP.">
+        <Step n={1} title="Register a team">
+          <CodeBlock code={REST_REGISTER} language="bash" />
+          <p className="text-sm text-slate-600">
+            Save the <code className="text-xs bg-slate-100 px-1 rounded">apiKey</code>. All other endpoints need it.
+          </p>
+        </Step>
+        <Step n={2} title="Create a project, invite teams">
+          <CodeBlock code={REST_PROJECT} language="bash" />
+        </Step>
+        <Step n={3} title="Publish a request">
+          <CodeBlock code={REST_REQUEST} language="bash" />
+        </Step>
+        <Step n={4} title="Recipient accepts and delivers, requester confirms">
+          <CodeBlock code={REST_LIFECYCLE} language="bash" />
+        </Step>
+      </Section>
+
+      <Section title="Webhooks">
+        <CodeBlock code={REST_WEBHOOK} language="bash" />
+      </Section>
+
+      <Section title="Status machine">
+        <CodeBlock code={STATUS_MACHINE} />
+      </Section>
+    </div>
+  );
+}
+
+function McpConnectSection() {
+  const cursor = `{
+  "mcpServers": {
+    "llm-teamwork": {
+      "type": "http",
+      "url": "https://YOUR_HOST/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ltw_..."
+      }
+    }
+  }
+}`;
+
+  const claudeCmd = `claude mcp add llm-teamwork \\
+  --transport http \\
+  --url https://YOUR_HOST/api/mcp \\
+  --header "Authorization=Bearer ltw_..."`;
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-6 space-y-5">
+      <header className="flex items-baseline justify-between gap-3">
+        <h2 className="text-xl font-semibold">Connect via MCP</h2>
+        <span className="text-xs text-slate-500">Streamable HTTP · 14 tools</span>
+      </header>
+      <p className="text-sm text-slate-600">
+        Point any MCP-capable agent (Claude Code, Cursor, Windsurf, your own MCP client…) at{" "}
+        <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded">/api/mcp</code>, passing your
+        team's API key as a Bearer token. The agent will see all 14 collaboration tools (
+        <span className="text-slate-700">publish_request</span>, <span className="text-slate-700">list_requests</span>,
+        <span className="text-slate-700"> deliver_request</span>…).
+      </p>
+
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <h3 className="text-sm font-semibold text-slate-700">Claude Code (one-liner)</h3>
+          <CopyButton value={claudeCmd} label="Copy command" />
+        </div>
+        <CodeBlock code={claudeCmd} language="bash" label="Copy command" />
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <h3 className="text-sm font-semibold text-slate-700">
+            JSON config (Cursor, Windsurf, <code className="text-xs">~/.claude/claude_desktop_config.json</code>…)
+          </h3>
+          <CopyButton value={cursor} label="Copy JSON" />
+        </div>
+        <CodeBlock code={cursor} language="json" label="Copy JSON" />
+        <p className="text-xs text-slate-500 mt-2">
+          Replace <code>YOUR_HOST</code> with this deployment's domain and{" "}
+          <code>ltw_...</code> with your team's API key from the{" "}
+          <a href="/teams" className="text-accent">Teams page</a>.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function Section({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-4">
+      <header>
+        <h2 className="text-xl font-semibold">{title}</h2>
+        {subtitle && <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-3">
+      <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-white text-[11px] font-bold">
+          {n}
+        </span>
+        {title}
+      </h3>
+      {children}
+    </div>
   );
 }

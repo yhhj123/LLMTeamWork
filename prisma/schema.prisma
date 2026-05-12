@@ -31,11 +31,53 @@ model Team {
   createdAt   DateTime @default(now())
 
   memberships  Membership[]
+  members      TeamMember[]
   threadsSent  Thread[]      @relation("ThreadFromTeam")
   threadsRecv  Thread[]      @relation("ThreadToTeam")
   comments     Comment[]
   attachments  Attachment[]
   webhooks     Webhook[]
+}
+
+// A human user. Owns/joins one or more Teams via TeamMember.
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  displayName   String
+  passwordHash  String
+  createdAt     DateTime @default(now())
+
+  memberships   TeamMember[]
+  sessions      Session[]
+}
+
+// Active login session — cookie token is the row's id.
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// User <-> Team membership.
+// role: owner | admin | member. The user who creates a team is its owner.
+model TeamMember {
+  id        String   @id @default(cuid())
+  userId    String
+  teamId    String
+  role      String   @default("member")
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@index([teamId])
 }
 
 model Project {

@@ -1,6 +1,7 @@
 import "./globals.css";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { HeaderUser } from "@/components/HeaderUser";
 
 export const metadata: Metadata = {
   title: "LLM TeamWork",
@@ -19,8 +20,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <nav className="flex gap-4 text-sm">
               <Link href="/projects">Projects</Link>
               <Link href="/teams">Teams</Link>
-              <Link href="/docs">API & MCP</Link>
+              <Link href="/docs">API &amp; MCP</Link>
             </nav>
+            <HeaderUser />
           </div>
         </header>
         <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
