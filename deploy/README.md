@@ -9,7 +9,7 @@ nginx vhost.
 On the target server (root or sudo):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yhhj123/LLMTeamWork/claude/multi-agent-collaboration-platform-8IvIF/deploy/install.sh \
+curl -fsSL https://raw.githubusercontent.com/yhhj123/LLMTeamWork/main/deploy/install.sh \
   | bash
 ```
 
@@ -109,7 +109,7 @@ If `3050` is also in use:
 
 ```bash
 APP_HOST_PORT=3050 \
-curl -fsSL https://raw.githubusercontent.com/yhhj123/LLMTeamWork/claude/multi-agent-collaboration-platform-8IvIF/deploy/install.sh \
+curl -fsSL https://raw.githubusercontent.com/yhhj123/LLMTeamWork/main/deploy/install.sh \
   | bash
 ```
 

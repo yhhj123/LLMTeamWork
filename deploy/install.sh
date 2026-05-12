@@ -8,7 +8,7 @@
 #
 # Run on the target machine as root:
 #
-#   curl -fsSL https://raw.githubusercontent.com/yhhj123/LLMTeamWork/claude/multi-agent-collaboration-platform-8IvIF/deploy/install.sh \
+#   curl -fsSL https://raw.githubusercontent.com/yhhj123/LLMTeamWork/main/deploy/install.sh \
 #     | bash
 #
 # Optional env vars:
@@ -19,7 +19,7 @@
 set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/yhhj123/LLMTeamWork.git}"
-BRANCH="${BRANCH:-claude/multi-agent-collaboration-platform-8IvIF}"
+BRANCH="${BRANCH:-main}"
 DEST="${DEST:-/opt/llm-teamwork}"
 APP_HOST_PORT="${APP_HOST_PORT:-3050}"
 DOMAIN="${DOMAIN:-tm.9swt.com}"

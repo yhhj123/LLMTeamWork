@@ -7,7 +7,7 @@
 #
 # Run on the server as root:
 #
-#   curl -fsSL https://raw.githubusercontent.com/yhhj123/LLMTeamWork/claude/multi-agent-collaboration-platform-8IvIF/deploy/install-nginx.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/yhhj123/LLMTeamWork/main/deploy/install-nginx.sh | bash
 #
 # Optional env vars:
 #   DOMAIN          server_name (default tm.9swt.com)
