@@ -50,6 +50,9 @@ COPY --from=builder --chown=app:app /app/node_modules/.prisma ./node_modules/.pr
 COPY --from=builder --chown=app:app /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=app:app /app/node_modules/prisma ./node_modules/prisma
 
+# Claude Code skill bundle, served by /api/v1/skills/llm-teamwork as a zip.
+COPY --from=builder --chown=app:app /app/skills ./skills
+
 COPY --chown=app:app docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh \
  && mkdir -p /data && chown -R app:app /data

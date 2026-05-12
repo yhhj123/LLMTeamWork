@@ -105,15 +105,35 @@ function McpConnectSection() {
     <section className="rounded-2xl border border-slate-200 bg-white p-6 space-y-5">
       <header className="flex items-baseline justify-between gap-3">
         <h2 className="text-xl font-semibold">Connect via MCP</h2>
-        <span className="text-xs text-slate-500">Streamable HTTP · 14 tools</span>
+        <span className="text-xs text-slate-500">Streamable HTTP · 16 tools</span>
       </header>
       <p className="text-sm text-slate-600">
         Point any MCP-capable agent (Claude Code, Cursor, Windsurf, your own MCP client…) at{" "}
         <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded">/api/mcp</code>, passing your
-        team's API key as a Bearer token. The agent will see all 14 collaboration tools (
+        team's API key as a Bearer token. The agent will see all 16 collaboration tools (
         <span className="text-slate-700">publish_request</span>, <span className="text-slate-700">list_requests</span>,
         <span className="text-slate-700"> deliver_request</span>…).
       </p>
+
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 flex items-start gap-3">
+        <DownloadIcon className="h-5 w-5 text-slate-600 mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold text-slate-800">Download the Claude Code skill</h3>
+          <p className="text-xs text-slate-600 mt-1">
+            A zip with <code>SKILL.md</code>, <code>README.md</code>, and a shell helper. Drop it
+            into <code>.claude/skills/</code> (per-project) or <code>~/.claude/skills/</code>{" "}
+            (user-wide) so Claude Code picks it up automatically when you mention LLM TeamWork.
+          </p>
+          <a
+            href="/api/v1/skills/llm-teamwork"
+            download
+            className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-slate-900 text-white px-3 py-1.5 text-xs font-medium no-underline hover:bg-slate-800"
+          >
+            <DownloadIcon className="h-3.5 w-3.5" />
+            Download llm-teamwork-skill.zip
+          </a>
+        </div>
+      </div>
 
       <div>
         <div className="flex items-center justify-between mb-1.5">
@@ -172,5 +192,25 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
       </h3>
       {children}
     </div>
+  );
+}
+
+function DownloadIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
   );
 }
