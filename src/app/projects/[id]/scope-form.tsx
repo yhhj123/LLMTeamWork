@@ -6,14 +6,24 @@ import { updateScopeAction, type ScopeResult } from "../actions";
 
 const initial: ScopeResult = {};
 
+type Labels = {
+  placeholder: string;
+  editor_placeholder: string;
+  save: string;
+  saving: string;
+  cancel: string;
+};
+
 export function ScopeEditor({
   projectId,
   teamId,
   initialScope,
+  labels,
 }: {
   projectId: string;
   teamId: string;
   initialScope: string;
+  labels: Labels;
 }) {
   const [editing, setEditing] = useState(false);
   const [state, action] = useFormState(updateScopeAction, initial);
@@ -30,7 +40,7 @@ export function ScopeEditor({
         onClick={() => setEditing(true)}
         className="block w-full text-left text-xs text-slate-600 hover:text-accent"
       >
-        {initialScope ? initialScope : <em className="text-slate-400">add scope…</em>}
+        {initialScope ? initialScope : <em className="text-slate-400">{labels.placeholder}</em>}
       </button>
     );
   }
@@ -46,11 +56,11 @@ export function ScopeEditor({
         value={value}
         onChange={e => setValue(e.target.value)}
         className="w-full rounded border border-slate-300 px-2 py-1 text-xs font-mono"
-        placeholder="What does this team own here? (e.g. Cart UI, checkout page)"
+        placeholder={labels.editor_placeholder}
         autoFocus
       />
       <div className="flex items-center gap-2 text-xs">
-        <Submit />
+        <Submit labels={labels} />
         <button
           type="button"
           onClick={() => {
@@ -59,7 +69,7 @@ export function ScopeEditor({
           }}
           className="rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-50"
         >
-          Cancel
+          {labels.cancel}
         </button>
         {state.error && <span className="text-red-600">{state.error}</span>}
       </div>
@@ -67,7 +77,7 @@ export function ScopeEditor({
   );
 }
 
-function Submit() {
+function Submit({ labels }: { labels: { save: string; saving: string } }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -75,7 +85,7 @@ function Submit() {
       disabled={pending}
       className="rounded bg-accent px-2 py-1 text-white disabled:opacity-50"
     >
-      {pending ? "Saving…" : "Save"}
+      {pending ? labels.saving : labels.save}
     </button>
   );
 }

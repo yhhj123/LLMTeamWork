@@ -6,7 +6,16 @@ import { inviteTeamAction, type InviteResult } from "../actions";
 
 const initial: InviteResult = {};
 
-export function InviteTeamForm({ projectId }: { projectId: string }) {
+type Labels = {
+  label: string;
+  placeholder: string;
+  hint: string;
+  submit: string;
+  submitting: string;
+  invited: string;
+};
+
+export function InviteTeamForm({ projectId, labels }: { projectId: string; labels: Labels }) {
   const [state, action] = useFormState(inviteTeamAction, initial);
   const formRef = useRef<HTMLFormElement>(null);
   const [lastInvited, setLastInvited] = useState<string | null>(null);
@@ -20,37 +29,33 @@ export function InviteTeamForm({ projectId }: { projectId: string }) {
     }
   }, [state]);
 
+  const invitedMsg =
+    lastInvited && labels.invited.replace("{name}", lastInvited);
+
   return (
     <form ref={formRef} action={action} className="space-y-3 text-sm">
       <input type="hidden" name="projectId" value={projectId} />
       <label className="block">
-        <span className="font-medium">Team to invite</span>
+        <span className="font-medium">{labels.label}</span>
         <input
           required
           name="team"
           autoComplete="off"
-          placeholder="team slug, exact name, or id (e.g. backend-squad)"
+          placeholder={labels.placeholder}
           className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs"
         />
-        <span className="block text-xs text-slate-500 mt-1">
-          The team must already exist on the platform. Ask the other team's owner to share their
-          slug — they can see it on <em>/me</em> or under their team settings page.
-        </span>
+        <span className="block text-xs text-slate-500 mt-1">{labels.hint}</span>
       </label>
       <div className="flex items-center gap-3">
-        <Submit />
+        <Submit labels={labels} />
         {state.error && <span className="text-sm text-red-600">{state.error}</span>}
-        {lastInvited && (
-          <span className="text-sm text-emerald-600">
-            Invited <strong>{lastInvited}</strong>.
-          </span>
-        )}
+        {invitedMsg && <span className="text-sm text-emerald-600">{invitedMsg}</span>}
       </div>
     </form>
   );
 }
 
-function Submit() {
+function Submit({ labels }: { labels: { submit: string; submitting: string } }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -58,7 +63,7 @@ function Submit() {
       disabled={pending}
       className="px-4 py-2 rounded-lg bg-accent text-white disabled:opacity-50"
     >
-      {pending ? "Inviting…" : "Invite team"}
+      {pending ? labels.submitting : labels.submit}
     </button>
   );
 }

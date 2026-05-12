@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { Markdown } from "@/components/Markdown";
 import { injectTeamMentions } from "@/lib/mentions";
+import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export default async function ThreadPage({ params }: { params: { id: string } }) {
-  const t = await prisma.thread.findUnique({
+  const thread = await prisma.thread.findUnique({
     where: { id: params.id },
     include: {
       project: { include: { memberships: { include: { team: true } } } },
@@ -28,50 +29,51 @@ export default async function ThreadPage({ params }: { params: { id: string } })
       parent: true,
     },
   });
-  if (!t) notFound();
+  if (!thread) notFound();
+  const { t } = getT();
 
-  const statusClass = STATUS_STYLE[t.status] ?? STATUS_STYLE.OPEN;
-  const projectTeams = t.project.memberships.map(m => m.team);
+  const statusClass = STATUS_STYLE[thread.status] ?? STATUS_STYLE.OPEN;
+  const projectTeams = thread.project.memberships.map(m => m.team);
   const md = (body: string) => injectTeamMentions(body, projectTeams);
 
   return (
     <div className="space-y-6 max-w-3xl">
       <nav className="text-sm text-slate-500">
-        <Link href={`/projects/${t.projectId}`}>{t.project.name}</Link>
+        <Link href={`/projects/${thread.projectId}`}>{thread.project.name}</Link>
         <span className="mx-1.5 text-slate-300">/</span>
-        <span>{t.kind === "REQUEST" ? "Request" : "Delivery"}</span>
+        <span>{thread.kind === "REQUEST" ? t("thread.crumb_request") : t("thread.crumb_delivery")}</span>
       </nav>
 
       <header className="rounded-xl bg-white border border-slate-200 p-6 space-y-4">
         <div className="flex items-start justify-between gap-4">
-          <h1 className="text-xl font-semibold leading-tight">{t.title}</h1>
+          <h1 className="text-xl font-semibold leading-tight">{thread.title}</h1>
           <span className={`shrink-0 rounded-full text-xs font-medium px-2.5 py-1 ring-1 ${statusClass}`}>
-            {t.status}
+            {thread.status}
           </span>
         </div>
         <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium">{t.kind}</span>
-          <span>{t.fromTeam.name}</span>
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium">{thread.kind}</span>
+          <span>{thread.fromTeam.name}</span>
           <Arrow />
-          <span>{t.toTeam.name}</span>
+          <span>{thread.toTeam.name}</span>
           <span>·</span>
-          <time>{new Date(t.createdAt).toLocaleString()}</time>
+          <time>{new Date(thread.createdAt).toLocaleString()}</time>
         </div>
-        {t.parent && (
+        {thread.parent && (
           <div className="text-xs text-slate-500">
-            Reply to: <Link href={`/threads/${t.parent.id}`}>{t.parent.title}</Link>
+            {t("thread.reply_to")} <Link href={`/threads/${thread.parent.id}`}>{thread.parent.title}</Link>
           </div>
         )}
         <div className="pt-2 border-t border-slate-100">
-          <Markdown>{md(t.body)}</Markdown>
+          <Markdown>{md(thread.body)}</Markdown>
         </div>
-        {t.attachments.length > 0 && (
+        {thread.attachments.length > 0 && (
           <div className="pt-3 border-t border-slate-100">
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
-              Attachments
+              {t("thread.attachments")}
             </div>
             <ul className="space-y-1 text-sm">
-              {t.attachments.map(a => (
+              {thread.attachments.map(a => (
                 <li key={a.id} className="flex items-center gap-2">
                   <PaperclipIcon className="h-4 w-4 text-slate-400" />
                   <a href={`/api/v1/attachments/${a.id}/content`}>{a.filename}</a>
@@ -83,11 +85,11 @@ export default async function ThreadPage({ params }: { params: { id: string } })
         )}
       </header>
 
-      {t.deliveries.length > 0 && (
+      {thread.deliveries.length > 0 && (
         <section>
-          <h2 className="font-semibold mb-2 text-slate-700">Deliveries</h2>
+          <h2 className="font-semibold mb-2 text-slate-700">{t("thread.deliveries")}</h2>
           <ul className="space-y-3">
-            {t.deliveries.map(d => {
+            {thread.deliveries.map(d => {
               const dStatus = STATUS_STYLE[d.status] ?? STATUS_STYLE.OPEN;
               return (
                 <li key={d.id} className="rounded-xl bg-white border border-slate-200 p-5 space-y-3">
@@ -111,12 +113,12 @@ export default async function ThreadPage({ params }: { params: { id: string } })
       )}
 
       <section>
-        <h2 className="font-semibold mb-2 text-slate-700">Comments</h2>
+        <h2 className="font-semibold mb-2 text-slate-700">{t("thread.comments")}</h2>
         <ul className="space-y-3">
-          {t.comments.length === 0 && (
-            <li className="text-sm text-slate-500 italic">No comments yet.</li>
+          {thread.comments.length === 0 && (
+            <li className="text-sm text-slate-500 italic">{t("thread.no_comments")}</li>
           )}
-          {t.comments.map(c => (
+          {thread.comments.map(c => (
             <li key={c.id} className="rounded-xl bg-white border border-slate-200 p-4 space-y-2">
               <div className="text-xs text-slate-500 flex items-center gap-2">
                 <span className="font-medium text-slate-700">{c.team.name}</span>

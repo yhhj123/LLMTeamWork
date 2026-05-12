@@ -7,25 +7,35 @@ const initial: ProjectActionResult = {};
 
 type Team = { id: string; name: string; role: string };
 
-export function NewProjectForm({ teams }: { teams: Team[] }) {
+type Labels = {
+  name: string;
+  name_placeholder: string;
+  desc: string;
+  owner: string;
+  owner_hint: string;
+  submit: string;
+  submitting: string;
+};
+
+export function NewProjectForm({ teams, labels }: { teams: Team[]; labels: Labels }) {
   const [state, action] = useFormState(createProjectAction, initial);
   const defaultTeamId = teams.find(t => t.role === "owner")?.id ?? teams[0]?.id ?? "";
 
   return (
     <form action={action} className="space-y-3 rounded-xl bg-white border border-slate-200 p-5">
       <label className="block text-sm">
-        <span className="font-medium">Project name</span>
+        <span className="font-medium">{labels.name}</span>
         <input
           required
           minLength={2}
           maxLength={80}
           name="name"
           className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-          placeholder="e.g. Checkout Revamp"
+          placeholder={labels.name_placeholder}
         />
       </label>
       <label className="block text-sm">
-        <span className="font-medium">Description (optional, markdown)</span>
+        <span className="font-medium">{labels.desc}</span>
         <textarea
           name="description"
           rows={4}
@@ -35,7 +45,7 @@ export function NewProjectForm({ teams }: { teams: Team[] }) {
         />
       </label>
       <label className="block text-sm">
-        <span className="font-medium">Owning team</span>
+        <span className="font-medium">{labels.owner}</span>
         <select
           name="ownerTeamId"
           defaultValue={defaultTeamId}
@@ -44,22 +54,19 @@ export function NewProjectForm({ teams }: { teams: Team[] }) {
         >
           {teams.map(t => (
             <option key={t.id} value={t.id}>
-              {t.name} {t.role === "owner" ? "(owner)" : `(${t.role})`}
+              {t.name} ({t.role})
             </option>
           ))}
         </select>
-        <span className="block text-xs text-slate-500 mt-1">
-          The team you pick becomes the project owner. You can invite other teams from the project
-          page.
-        </span>
+        <span className="block text-xs text-slate-500 mt-1">{labels.owner_hint}</span>
       </label>
-      <Submit />
+      <Submit labels={labels} />
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
     </form>
   );
 }
 
-function Submit() {
+function Submit({ labels }: { labels: { submit: string; submitting: string } }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -67,7 +74,7 @@ function Submit() {
       disabled={pending}
       className="px-4 py-2 rounded-lg bg-accent text-white disabled:opacity-50"
     >
-      {pending ? "Creating…" : "Create project"}
+      {pending ? labels.submitting : labels.submit}
     </button>
   );
 }

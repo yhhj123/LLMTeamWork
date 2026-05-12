@@ -24,14 +24,23 @@ flowchart LR
 - @platform-team — CI, hosting, observability
 `;
 
+type Labels = {
+  save: string;
+  saving: string;
+  cancel: string;
+  hint: string;
+};
+
 export function ArchitectureForm({
   projectId,
   initialValue,
   onClose,
+  labels,
 }: {
   projectId: string;
   initialValue: string;
   onClose: () => void;
+  labels: Labels;
 }) {
   const [state, action] = useFormState(updateArchitectureAction, initial);
   const [value, setValue] = useState(initialValue);
@@ -52,18 +61,15 @@ export function ArchitectureForm({
         className="w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs"
         placeholder={PLACEHOLDER}
       />
-      <p className="text-xs text-slate-500">
-        Markdown with mermaid code blocks (<code>```mermaid</code>) is supported. Up to 50,000
-        characters.
-      </p>
+      <p className="text-xs text-slate-500">{labels.hint}</p>
       <div className="flex items-center gap-2">
-        <Submit />
+        <Submit labels={labels} />
         <button
           type="button"
           onClick={onClose}
           className="px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm hover:bg-slate-50"
         >
-          Cancel
+          {labels.cancel}
         </button>
         {state.error && <span className="text-sm text-red-600">{state.error}</span>}
       </div>
@@ -71,7 +77,7 @@ export function ArchitectureForm({
   );
 }
 
-function Submit() {
+function Submit({ labels }: { labels: { save: string; saving: string } }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -79,7 +85,7 @@ function Submit() {
       disabled={pending}
       className="px-4 py-2 rounded-lg bg-accent text-white text-sm disabled:opacity-50"
     >
-      {pending ? "Saving…" : "Save architecture"}
+      {pending ? labels.saving : labels.save}
     </button>
   );
 }
