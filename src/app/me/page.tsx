@@ -2,12 +2,14 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/session";
+import { getT } from "@/lib/i18n";
 import { TeamKeyCard } from "./key-card";
 
 export const dynamic = "force-dynamic";
 
 export default async function MePage() {
   const user = await requireUser();
+  const { t } = getT();
 
   const memberships = await prisma.teamMember.findMany({
     where: { userId: user.id },
@@ -15,37 +17,37 @@ export default async function MePage() {
     orderBy: { createdAt: "asc" },
   });
 
-  // Resolve the public origin so the MCP snippets render with real URLs even
-  // when the page is server-rendered.
   const h = headers();
   const proto = h.get("x-forwarded-proto") ?? "http";
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
   const origin = `${proto}://${host}`;
 
+  const noTeam = t("me.no_team");
+  const [noTeamBefore, noTeamAfter] = noTeam.split("{link}");
+
   return (
     <div className="space-y-8 max-w-3xl">
       <header>
-        <h1 className="text-2xl font-semibold">Profile</h1>
+        <h1 className="text-2xl font-semibold">{t("me.title")}</h1>
         <p className="text-sm text-slate-600 mt-1">
-          Account: <span className="font-medium text-slate-800">{user.displayName}</span>{" "}
+          {t("me.account")} <span className="font-medium text-slate-800">{user.displayName}</span>{" "}
           <span className="text-slate-500">&lt;{user.email}&gt;</span>
         </p>
       </header>
 
       <section className="space-y-4">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold">Your teams &amp; API keys</h2>
-          <Link href="/teams" className="text-sm">+ Create another team</Link>
+          <h2 className="text-lg font-semibold">{t("me.section.teams")}</h2>
+          <Link href="/teams" className="text-sm">
+            {t("me.create_another")}
+          </Link>
         </div>
-        <p className="text-sm text-slate-600">
-          The API key is what your agent uses to call the REST API and the MCP server. Treat it like
-          a password: anyone with the key can act as the team. Click <em>Reveal</em> to see it,
-          <em> Copy</em> to put it on your clipboard, or — if you're an owner — <em>Rotate</em> to
-          replace it (the previous key stops working immediately).
-        </p>
+        <p className="text-sm text-slate-600">{t("me.intro")}</p>
         {memberships.length === 0 ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            You're not in any team yet. <Link href="/teams">Create one</Link>.
+            {noTeamBefore}
+            <Link href="/teams">{t("me.no_team_link")}</Link>
+            {noTeamAfter}
           </div>
         ) : (
           <ul className="space-y-4">
@@ -58,6 +60,21 @@ export default async function MePage() {
                   apiKey={m.team.apiKey}
                   role={m.role}
                   origin={origin}
+                  labels={{
+                    settings: t("me.card.settings"),
+                    api_key: t("me.card.api_key"),
+                    reveal: t("me.card.reveal"),
+                    hide: t("me.card.hide"),
+                    copy: t("me.card.copy"),
+                    rotate: t("me.card.rotate"),
+                    rotating: t("me.card.rotating"),
+                    rotate_confirm: t("me.card.rotate_confirm", { team: m.team.name }),
+                    show_snippets: t("me.card.show_snippets"),
+                    hide_snippets: t("me.card.hide_snippets"),
+                    snippets_claude: t("me.snippets.claude"),
+                    snippets_json: t("me.snippets.json"),
+                    snippets_env: t("me.snippets.env"),
+                  }}
                 />
               </li>
             ))}

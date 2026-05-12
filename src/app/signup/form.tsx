@@ -5,13 +5,27 @@ import { signupAction, type ActionResult } from "../(auth)/actions";
 
 const initial: ActionResult = {};
 
-export function SignupForm() {
+export function SignupForm({
+  labels,
+}: {
+  labels: {
+    email: string;
+    name: string;
+    password: string;
+    password_hint: string;
+    team: string;
+    team_placeholder: string;
+    team_hint: string;
+    submit: string;
+    submitting: string;
+  };
+}) {
   const [state, action] = useFormState(signupAction, initial);
 
   return (
     <form action={action} className="space-y-3 rounded-xl bg-white border border-slate-200 p-5">
       <label className="block text-sm">
-        <span className="font-medium">Email</span>
+        <span className="font-medium">{labels.email}</span>
         <input
           required
           type="email"
@@ -21,7 +35,7 @@ export function SignupForm() {
         />
       </label>
       <label className="block text-sm">
-        <span className="font-medium">Your name</span>
+        <span className="font-medium">{labels.name}</span>
         <input
           required
           minLength={2}
@@ -31,7 +45,7 @@ export function SignupForm() {
         />
       </label>
       <label className="block text-sm">
-        <span className="font-medium">Password</span>
+        <span className="font-medium">{labels.password}</span>
         <input
           required
           minLength={8}
@@ -40,28 +54,26 @@ export function SignupForm() {
           autoComplete="new-password"
           className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
         />
-        <span className="block text-xs text-slate-500 mt-1">At least 8 characters.</span>
+        <span className="block text-xs text-slate-500 mt-1">{labels.password_hint}</span>
       </label>
       <label className="block text-sm">
-        <span className="font-medium">Team name</span>
+        <span className="font-medium">{labels.team}</span>
         <input
           required
           minLength={2}
           name="teamName"
           className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-          placeholder="e.g. Frontend Squad"
+          placeholder={labels.team_placeholder}
         />
-        <span className="block text-xs text-slate-500 mt-1">
-          Your first team — you'll be its owner. You can be invited into more later.
-        </span>
+        <span className="block text-xs text-slate-500 mt-1">{labels.team_hint}</span>
       </label>
-      <Submit />
+      <Submit labels={labels} />
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
     </form>
   );
 }
 
-function Submit() {
+function Submit({ labels }: { labels: { submit: string; submitting: string } }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -69,7 +81,7 @@ function Submit() {
       disabled={pending}
       className="px-4 py-2 rounded-lg bg-accent text-white disabled:opacity-50"
     >
-      {pending ? "Creating account…" : "Sign up"}
+      {pending ? labels.submitting : labels.submit}
     </button>
   );
 }
