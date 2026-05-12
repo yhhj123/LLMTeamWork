@@ -10,7 +10,22 @@ type TeamResult = {
   apiKey: string;
 };
 
-export function TeamRegisterForm() {
+type Labels = {
+  name: string;
+  desc: string;
+  placeholder: string;
+  submit: string;
+  submitting: string;
+  save_key: string;
+  save_key_hint: string;
+  wire_title: string;
+  wire_sub: string;
+  snippets_claude: string;
+  snippets_json: string;
+  snippets_env: string;
+};
+
+export function TeamRegisterForm({ labels }: { labels: Labels }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [team, setTeam] = useState<TeamResult | null>(null);
@@ -43,41 +58,40 @@ export function TeamRegisterForm() {
         className="space-y-3 rounded-xl bg-white border border-slate-200 p-5"
       >
         <label className="block text-sm">
-          <span className="font-medium">Team name</span>
+          <span className="font-medium">{labels.name}</span>
           <input
             required
             minLength={2}
             value={name}
             onChange={e => setName(e.target.value)}
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-            placeholder="Frontend Squad"
           />
         </label>
         <label className="block text-sm">
-          <span className="font-medium">Description (optional)</span>
+          <span className="font-medium">{labels.desc}</span>
           <textarea
             value={description}
             onChange={e => setDescription(e.target.value)}
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
             rows={2}
-            placeholder="What this team owns (markdown OK)"
+            placeholder={labels.placeholder}
           />
         </label>
         <button
           disabled={busy}
           className="px-4 py-2 rounded-lg bg-accent text-white disabled:opacity-50"
         >
-          {busy ? "Creating…" : "Create team"}
+          {busy ? labels.submitting : labels.submit}
         </button>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </form>
 
-      {team && <TeamCreatedPanel team={team} />}
+      {team && <TeamCreatedPanel team={team} labels={labels} />}
     </div>
   );
 }
 
-function TeamCreatedPanel({ team }: { team: TeamResult }) {
+function TeamCreatedPanel({ team, labels }: { team: TeamResult; labels: Labels }) {
   const origin = typeof window === "undefined" ? "https://YOUR_HOST" : window.location.origin;
 
   const mcpJson = JSON.stringify(
@@ -107,45 +121,40 @@ function TeamCreatedPanel({ team }: { team: TeamResult }) {
       <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
         <div className="font-semibold text-amber-900 mb-2 flex items-center gap-2">
           <KeyIcon className="h-4 w-4" />
-          Save this API key now — it's shown only once
+          {labels.save_key}
         </div>
         <div className="flex items-center gap-2">
           <code className="break-all flex-1 rounded bg-white border border-amber-200 px-2 py-1 text-xs text-amber-900 font-mono">
             {team.apiKey}
           </code>
-          <CopyButton value={team.apiKey} label="Copy key" />
+          <CopyButton value={team.apiKey} />
         </div>
-        <p className="text-xs text-amber-800 mt-2">
-          Treat it like a password. You can rotate it via{" "}
-          <code>POST /api/v1/teams/me/rotate-key</code>.
-        </p>
+        <p className="text-xs text-amber-800 mt-2">{labels.save_key_hint}</p>
       </div>
 
       <div className="rounded-xl bg-white border border-slate-200 p-5 space-y-4">
         <header>
-          <h3 className="font-semibold text-slate-800">Wire it into your agent</h3>
-          <p className="text-sm text-slate-600 mt-1">
-            Three drop-in options — pick whichever fits your tool. Hover the code to copy.
-          </p>
+          <h3 className="font-semibold text-slate-800">{labels.wire_title}</h3>
+          <p className="text-sm text-slate-600 mt-1">{labels.wire_sub}</p>
         </header>
 
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">
-            Claude Code (one-liner)
+            {labels.snippets_claude}
           </h4>
           <CodeBlock code={claudeCmd} language="bash" />
         </div>
 
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">
-            Cursor / Windsurf / Claude Desktop config
+            {labels.snippets_json}
           </h4>
           <CodeBlock code={mcpJson} language="json" />
         </div>
 
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">
-            Shell env (for the bundled skill / curl helper)
+            {labels.snippets_env}
           </h4>
           <CodeBlock code={envBlock} language="bash" />
         </div>

@@ -6,14 +6,25 @@ import { updateTeamAction, type UpdateTeamResult } from "../actions";
 
 const initial: UpdateTeamResult = {};
 
+type Labels = {
+  name: string;
+  desc: string;
+  desc_hint: string;
+  submit: string;
+  submitting: string;
+  saved: string;
+};
+
 export function EditTeamForm({
   teamId,
   initialName,
   initialDescription,
+  labels,
 }: {
   teamId: string;
   initialName: string;
   initialDescription: string;
+  labels: Labels;
 }) {
   const [state, action] = useFormState(updateTeamAction, initial);
   const [showSaved, setShowSaved] = useState(false);
@@ -30,7 +41,7 @@ export function EditTeamForm({
     <form action={action} className="space-y-3 rounded-xl bg-white border border-slate-200 p-5">
       <input type="hidden" name="teamId" value={teamId} />
       <label className="block text-sm">
-        <span className="font-medium">Team name</span>
+        <span className="font-medium">{labels.name}</span>
         <input
           required
           minLength={2}
@@ -41,29 +52,26 @@ export function EditTeamForm({
         />
       </label>
       <label className="block text-sm">
-        <span className="font-medium">Description (markdown OK)</span>
+        <span className="font-medium">{labels.desc}</span>
         <textarea
           name="description"
           rows={4}
           maxLength={500}
           defaultValue={initialDescription}
           className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs"
-          placeholder={"What does this team own?\n\n- Owns the cart UI\n- Reports to Product"}
         />
-        <span className="block text-xs text-slate-500 mt-1">
-          Up to 500 characters. Rendered as markdown on the team page.
-        </span>
+        <span className="block text-xs text-slate-500 mt-1">{labels.desc_hint}</span>
       </label>
       <div className="flex items-center gap-3">
-        <Submit />
+        <Submit labels={labels} />
         {state.error && <span className="text-sm text-red-600">{state.error}</span>}
-        {showSaved && <span className="text-sm text-emerald-600">Saved.</span>}
+        {showSaved && <span className="text-sm text-emerald-600">{labels.saved}</span>}
       </div>
     </form>
   );
 }
 
-function Submit() {
+function Submit({ labels }: { labels: { submit: string; submitting: string } }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -71,7 +79,7 @@ function Submit() {
       disabled={pending}
       className="px-4 py-2 rounded-lg bg-accent text-white disabled:opacity-50"
     >
-      {pending ? "Saving…" : "Save changes"}
+      {pending ? labels.submitting : labels.submit}
     </button>
   );
 }

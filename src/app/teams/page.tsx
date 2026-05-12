@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/session";
+import { getT } from "@/lib/i18n";
 import { TeamRegisterForm } from "./form";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeamsPage() {
   const user = await requireUser();
+  const { t } = getT();
 
   const memberships = await prisma.teamMember.findMany({
     where: { userId: user.id },
@@ -17,10 +19,9 @@ export default async function TeamsPage() {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-2xl font-semibold">Your teams</h1>
+        <h1 className="text-2xl font-semibold">{t("teams.title")}</h1>
         <p className="text-sm text-slate-600 mt-1">
-          You belong to {memberships.length} team{memberships.length === 1 ? "" : "s"}. Each team
-          owns an API key its agents use to call the platform.
+          {t("teams.summary", { n: memberships.length })}
         </p>
       </header>
 
@@ -46,8 +47,10 @@ export default async function TeamsPage() {
                 </p>
               )}
               <div className="text-xs text-slate-500 mt-3 flex items-center justify-between">
-                <span>Joined {new Date(m.createdAt).toLocaleDateString()}</span>
-                <Link href={`/teams/${m.team.id}`}>Settings →</Link>
+                <span>
+                  {t("teams.joined", { date: new Date(m.createdAt).toLocaleDateString() })}
+                </span>
+                <Link href={`/teams/${m.team.id}`}>{t("teams.settings")}</Link>
               </div>
             </li>
           ))}
@@ -55,12 +58,24 @@ export default async function TeamsPage() {
       </section>
 
       <section className="border-t border-slate-200 pt-8">
-        <h2 className="text-lg font-semibold mb-2">Create another team</h2>
-        <p className="text-sm text-slate-600 mb-4">
-          Useful if you operate multiple groups (e.g. <em>Frontend</em>, <em>Backend</em>). After
-          creating, the API key is shown once — copy it then.
-        </p>
-        <TeamRegisterForm />
+        <h2 className="text-lg font-semibold mb-2">{t("teams.create.heading")}</h2>
+        <p className="text-sm text-slate-600 mb-4">{t("teams.create.intro")}</p>
+        <TeamRegisterForm
+          labels={{
+            name: t("teams.create.name"),
+            desc: t("teams.create.desc"),
+            placeholder: t("teams.create.placeholder"),
+            submit: t("teams.create.submit"),
+            submitting: t("teams.create.submitting"),
+            save_key: t("teams.create.save_key"),
+            save_key_hint: t("teams.create.save_key_hint"),
+            wire_title: t("teams.create.wire_title"),
+            wire_sub: t("teams.create.wire_sub"),
+            snippets_claude: t("me.snippets.claude"),
+            snippets_json: t("me.snippets.json"),
+            snippets_env: t("me.snippets.env"),
+          }}
+        />
       </section>
     </div>
   );

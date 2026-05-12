@@ -3,16 +3,17 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { Markdown } from "@/components/Markdown";
+import { getT } from "@/lib/i18n";
 import { EditTeamForm } from "./edit-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeamDetailPage({ params }: { params: { id: string } }) {
   const user = await requireUser();
+  const { t } = getT();
 
   const membership = user.teams.find(t => t.id === params.id);
   if (!membership) {
-    // Not your team — bounce away. We don't expose foreign team detail pages.
     redirect("/teams");
   }
 
@@ -27,10 +28,14 @@ export default async function TeamDetailPage({ params }: { params: { id: string 
 
   const canEdit = membership.role === "owner" || membership.role === "admin";
 
+  const slugNote = t("team.edit.slug_note");
+  const slugParts = slugNote.split("{slug}");
+  const linkParts = slugParts[1]?.split("{link}") ?? ["", ""];
+
   return (
     <div className="max-w-3xl space-y-8">
       <nav className="text-sm text-slate-500">
-        <Link href="/teams">Teams</Link>
+        <Link href="/teams">{t("team.crumb")}</Link>
         <span className="mx-1.5 text-slate-300">/</span>
         <span>{team.name}</span>
       </nav>
@@ -44,7 +49,7 @@ export default async function TeamDetailPage({ params }: { params: { id: string 
             </div>
           </div>
           <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs">
-            you are <strong>{membership.role}</strong>
+            {t("team.you_are")} <strong>{membership.role}</strong>
           </span>
         </div>
         {team.description && (
@@ -55,7 +60,7 @@ export default async function TeamDetailPage({ params }: { params: { id: string 
       </header>
 
       <section>
-        <h2 className="text-lg font-semibold mb-2">Members</h2>
+        <h2 className="text-lg font-semibold mb-2">{t("team.section.members")}</h2>
         <ul className="rounded-xl bg-white border border-slate-200 divide-y divide-slate-100">
           {team.members.map(m => (
             <li key={m.id} className="p-3 flex items-center justify-between text-sm">
@@ -70,23 +75,32 @@ export default async function TeamDetailPage({ params }: { params: { id: string 
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold mb-2">Edit team info</h2>
+        <h2 className="text-lg font-semibold mb-2">{t("team.section.edit")}</h2>
         {canEdit ? (
           <EditTeamForm
             teamId={team.id}
             initialName={team.name}
             initialDescription={team.description ?? ""}
+            labels={{
+              name: t("team.edit.name"),
+              desc: t("team.edit.desc"),
+              desc_hint: t("team.edit.desc_hint"),
+              submit: t("team.edit.submit"),
+              submitting: t("team.edit.submitting"),
+              saved: t("team.edit.saved"),
+            }}
           />
         ) : (
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-            Only team owners and admins can edit team info. Your role is{" "}
-            <strong>{membership.role}</strong>.
+            {t("team.edit.locked_role", { role: membership.role })}
           </div>
         )}
         <p className="text-xs text-slate-500 mt-3">
-          The slug (<code>{team.slug}</code>) is intentionally immutable — agents and webhook
-          subscribers may reference it. To rotate the API key, use{" "}
-          <Link href="/me">your profile page</Link>.
+          {slugParts[0]}
+          <code>{team.slug}</code>
+          {linkParts[0]}
+          <Link href="/me">{t("team.edit.profile_link")}</Link>
+          {linkParts[1]}
         </p>
       </section>
     </div>

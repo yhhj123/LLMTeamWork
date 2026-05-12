@@ -5,6 +5,22 @@ import { useState, useTransition } from "react";
 import { CopyButton, CodeBlock } from "@/components/CopyButton";
 import { rotateTeamApiKeyAction } from "./actions";
 
+type Labels = {
+  settings: string;
+  api_key: string;
+  reveal: string;
+  hide: string;
+  copy: string;
+  rotate: string;
+  rotating: string;
+  rotate_confirm: string;
+  show_snippets: string;
+  hide_snippets: string;
+  snippets_claude: string;
+  snippets_json: string;
+  snippets_env: string;
+};
+
 type Props = {
   teamId: string;
   teamName: string;
@@ -12,6 +28,7 @@ type Props = {
   apiKey: string;
   role: string;
   origin: string;
+  labels: Labels;
 };
 
 export function TeamKeyCard({
@@ -21,6 +38,7 @@ export function TeamKeyCard({
   apiKey: initialKey,
   role,
   origin,
+  labels,
 }: Props) {
   const [apiKey, setApiKey] = useState(initialKey);
   const [revealed, setRevealed] = useState(false);
@@ -31,12 +49,7 @@ export function TeamKeyCard({
   const masked = `${apiKey.slice(0, 8)}${"•".repeat(Math.max(apiKey.length - 12, 8))}${apiKey.slice(-4)}`;
 
   function onRotate() {
-    if (
-      !window.confirm(
-        `Rotate the API key for "${teamName}"?\n\nAny agent or webhook still using the old key will start failing immediately.`
-      )
-    )
-      return;
+    if (!window.confirm(labels.rotate_confirm)) return;
     setError(null);
     startTransition(async () => {
       const res = await rotateTeamApiKeyAction(teamId);
@@ -87,7 +100,7 @@ export function TeamKeyCard({
             href={`/teams/${teamId}`}
             className="text-xs text-slate-500 hover:text-accent no-underline"
           >
-            Settings →
+            {labels.settings}
           </Link>
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">{role}</span>
         </div>
@@ -95,7 +108,7 @@ export function TeamKeyCard({
 
       <div className="space-y-2">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          API key
+          {labels.api_key}
         </div>
         <div className="flex items-center gap-2">
           <code className="flex-1 rounded bg-slate-50 border border-slate-200 px-2 py-1.5 text-xs font-mono text-slate-800 overflow-x-auto">
@@ -106,9 +119,9 @@ export function TeamKeyCard({
             onClick={() => setRevealed(v => !v)}
             className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
           >
-            {revealed ? "Hide" : "Reveal"}
+            {revealed ? labels.hide : labels.reveal}
           </button>
-          <CopyButton value={apiKey} label="Copy" />
+          <CopyButton value={apiKey} label={labels.copy} />
           {role === "owner" && (
             <button
               type="button"
@@ -116,7 +129,7 @@ export function TeamKeyCard({
               disabled={pending}
               className="rounded-md border border-rose-300 bg-white px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
             >
-              {pending ? "Rotating…" : "Rotate"}
+              {pending ? labels.rotating : labels.rotate}
             </button>
           )}
         </div>
@@ -129,25 +142,25 @@ export function TeamKeyCard({
           onClick={() => setShowSnippets(v => !v)}
           className="text-xs font-medium text-accent hover:underline"
         >
-          {showSnippets ? "Hide" : "Show"} MCP / shell snippets ↓
+          {showSnippets ? labels.hide_snippets : labels.show_snippets}
         </button>
         {showSnippets && (
           <div className="mt-3 space-y-3">
             <div>
               <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
-                Claude Code (one-liner)
+                {labels.snippets_claude}
               </h4>
               <CodeBlock code={claudeCmd} language="bash" />
             </div>
             <div>
               <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
-                Cursor / Windsurf / Claude Desktop config
+                {labels.snippets_json}
               </h4>
               <CodeBlock code={mcpJson} language="json" />
             </div>
             <div>
               <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
-                Shell env (for the bundled skill / curl helper)
+                {labels.snippets_env}
               </h4>
               <CodeBlock code={envBlock} language="bash" />
             </div>
