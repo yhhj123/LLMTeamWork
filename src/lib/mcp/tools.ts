@@ -8,6 +8,7 @@ import {
   getProject,
   inviteTeamToProject,
   listProjectMembers,
+  findTeamBySlugOrName,
   publishRequest,
   listThreads,
   getThread,
@@ -111,6 +112,12 @@ export const mcpTools: McpTool[] = [
     "Invite another team into a project, by team id, slug, or name.",
     z.object({ projectId: z.string(), team: z.string() }),
     async (teamId, args) => inviteTeamToProject(teamId, args.projectId, args.team)
+  ),
+  tool(
+    "find_team",
+    "Look up a team by its exact id, slug, or name. Returns null if no match. Useful before invite_team when the target team isn't yet in any of your projects.",
+    z.object({ query: z.string().min(1) }),
+    async (_teamId, args) => ({ team: await findTeamBySlugOrName(args.query) })
   ),
   tool(
     "publish_request",

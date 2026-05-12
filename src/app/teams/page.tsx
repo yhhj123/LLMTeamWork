@@ -30,16 +30,24 @@ export default async function TeamsPage() {
             <li key={m.id} className="rounded-xl bg-white border border-slate-200 p-5">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="font-semibold">{m.team.name}</div>
+                  <Link
+                    href={`/teams/${m.team.id}`}
+                    className="font-semibold no-underline hover:text-accent"
+                  >
+                    {m.team.name}
+                  </Link>
                   <div className="text-xs text-slate-500 mt-1">slug: {m.team.slug}</div>
                 </div>
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">{m.role}</span>
               </div>
               {m.team.description && (
-                <p className="text-sm text-slate-600 mt-2">{m.team.description}</p>
+                <p className="text-sm text-slate-600 mt-2 line-clamp-3 whitespace-pre-wrap">
+                  {m.team.description}
+                </p>
               )}
-              <div className="text-xs text-slate-500 mt-3">
-                Joined {new Date(m.createdAt).toLocaleDateString()}
+              <div className="text-xs text-slate-500 mt-3 flex items-center justify-between">
+                <span>Joined {new Date(m.createdAt).toLocaleDateString()}</span>
+                <Link href={`/teams/${m.team.id}`}>Settings →</Link>
               </div>
             </li>
           ))}

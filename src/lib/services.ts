@@ -33,12 +33,55 @@ export async function createTeam(
   return toPublicTeam(team, /* includeKey */ true);
 }
 
+/**
+ * Find a team by exact id, slug, or name. Used by agents to discover a team
+ * before inviting it into a project. Returns null if no match.
+ */
+export async function findTeamBySlugOrName(query: string) {
+  const team = await prisma.team.findFirst({
+    where: { OR: [{ id: query }, { slug: query }, { name: query }] },
+  });
+  return team ? toPublicTeam(team) : null;
+}
+
 export async function rotateTeamApiKey(teamId: string) {
   const team = await prisma.team.update({
     where: { id: teamId },
     data: { apiKey: generateApiKey() },
   });
   return toPublicTeam(team, true);
+}
+
+/**
+ * Update a team's mutable fields. Slug stays stable so existing URLs and
+ * agent-side slug references keep working.
+ */
+export async function updateTeam(
+  teamId: string,
+  input: { name?: string; description?: string | null }
+) {
+  if (input.name !== undefined) {
+    const trimmed = input.name.trim();
+    if (trimmed.length < 2 || trimmed.length > 60) {
+      throw new HttpError(422, "Name must be 2–60 characters.");
+    }
+    const taken = await prisma.team.findFirst({
+      where: { name: trimmed, NOT: { id: teamId } },
+      select: { id: true },
+    });
+    if (taken) throw new HttpError(409, "Another team already uses that name.");
+    input.name = trimmed;
+  }
+  const team = await prisma.team.update({
+    where: { id: teamId },
+    data: {
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.description !== undefined
+        ? { description: input.description || null }
+        : {}),
+    },
+  });
+  return toPublicTeam(team);
 }
 
 // ----- Projects --------------------------------------------------------------
@@ -116,9 +159,23 @@ export async function publishRequest(
   const toTeam = await prisma.team.findFirst({
     where: { OR: [{ id: input.toTeamSlugOrId }, { slug: input.toTeamSlugOrId }, { name: input.toTeamSlugOrId }] },
   });
-  if (!toTeam) throw new HttpError(404, "Recipient team not found.");
+  if (!toTeam) {
+    throw new HttpError(
+      404,
+      `Recipient team '${input.toTeamSlugOrId}' not found. Use list_project_teams to see teams already in this project, or find_team (by exact slug/name) to discover one elsewhere on the platform.`
+    );
+  }
   if (toTeam.id === fromTeamId) throw new HttpError(400, "Cannot send a request to your own team.");
-  await assertProjectMember(toTeam.id, projectId);
+  // Distinct, actionable message when the team exists but isn't a member yet.
+  const m = await prisma.membership.findUnique({
+    where: { teamId_projectId: { teamId: toTeam.id, projectId } },
+  });
+  if (!m) {
+    throw new HttpError(
+      409,
+      `Team '${toTeam.slug}' exists but is not a member of this project. Call invite_team first (you must be a project member yourself), then retry publish_request.`
+    );
+  }
 
   const thread = await prisma.thread.create({
     data: {

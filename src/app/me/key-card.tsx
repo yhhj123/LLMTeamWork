@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { CopyButton, CodeBlock } from "@/components/CopyButton";
 import { rotateTeamApiKeyAction } from "./actions";
@@ -73,10 +74,23 @@ export function TeamKeyCard({
     <div className="rounded-xl bg-white border border-slate-200 p-5 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="font-semibold text-slate-800">{teamName}</div>
+          <Link
+            href={`/teams/${teamId}`}
+            className="font-semibold text-slate-800 no-underline hover:text-accent"
+          >
+            {teamName}
+          </Link>
           <div className="text-xs text-slate-500 mt-0.5">slug: {teamSlug}</div>
         </div>
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">{role}</span>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/teams/${teamId}`}
+            className="text-xs text-slate-500 hover:text-accent no-underline"
+          >
+            Settings →
+          </Link>
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">{role}</span>
+        </div>
       </div>
 
       <div className="space-y-2">
