@@ -9,7 +9,7 @@ nginx vhost.
 On the target server (root or sudo):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yhhj123/LLMTeamWork/main/deploy/install.sh \
+curl -fsSL https://gitee.com/yhhj123/llmteamwork/raw/main/deploy/install.sh \
   | bash
 ```
 
@@ -18,6 +18,10 @@ That brings up the app container at `http://127.0.0.1:3050/`. Verify with:
 ```bash
 curl -fsS http://127.0.0.1:3050/api/mcp
 ```
+
+> The default repo source is the Gitee mirror (faster from mainland China).
+> The mirror auto-syncs from the GitHub upstream daily. To force the original
+> GitHub source instead, prepend `REPO_URL=https://github.com/yhhj123/LLMTeamWork.git`.
 
 Then add the nginx vhost (next section).
 
@@ -109,11 +113,18 @@ If `3050` is also in use:
 
 ```bash
 APP_HOST_PORT=3050 \
-curl -fsSL https://raw.githubusercontent.com/yhhj123/LLMTeamWork/main/deploy/install.sh \
+curl -fsSL https://gitee.com/yhhj123/llmteamwork/raw/main/deploy/install.sh \
   | bash
 ```
 
 Don't forget to update the `upstream` block in the nginx vhost.
+
+## Docker Hub access from mainland China
+
+The install script writes `/etc/docker/daemon.json` with three registry mirrors
+(USTC, Aliyun, DaoCloud) if no daemon.json exists. To opt out, pass
+`SKIP_DOCKER_MIRROR=1`. If an existing daemon.json is present, the script
+leaves it alone and prints what to add manually.
 
 ## Postgres instead of SQLite
 
