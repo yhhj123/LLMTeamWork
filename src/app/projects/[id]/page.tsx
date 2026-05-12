@@ -104,11 +104,14 @@ export default async function ProjectPage({ params }: { params: { id: string } }
               </div>
               <ul className="space-y-2">
                 {grouped[status].map(t => (
-                  <li key={t.id} className="rounded-lg bg-white border border-slate-200 p-3">
-                    <Link href={`/threads/${t.id}`} className="font-medium no-underline">
+                  <li key={t.id} className="rounded-lg bg-white border border-slate-200 p-3 hover:border-slate-300 transition-colors">
+                    <Link
+                      href={`/threads/${t.id}`}
+                      className="block text-sm font-medium text-slate-800 hover:text-accent no-underline leading-snug line-clamp-3"
+                    >
                       {t.title}
                     </Link>
-                    <div className="text-xs text-slate-500 mt-1">
+                    <div className="text-xs text-slate-500 mt-1.5 truncate">
                       {t.fromTeam.name} → {t.toTeam.name}
                     </div>
                   </li>

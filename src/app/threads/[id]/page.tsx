@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { Markdown } from "@/components/Markdown";
+import { injectTeamMentions } from "@/lib/mentions";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export default async function ThreadPage({ params }: { params: { id: string } })
   const t = await prisma.thread.findUnique({
     where: { id: params.id },
     include: {
-      project: true,
+      project: { include: { memberships: { include: { team: true } } } },
       fromTeam: true,
       toTeam: true,
       comments: { orderBy: { createdAt: "asc" }, include: { team: true } },
@@ -30,6 +31,8 @@ export default async function ThreadPage({ params }: { params: { id: string } })
   if (!t) notFound();
 
   const statusClass = STATUS_STYLE[t.status] ?? STATUS_STYLE.OPEN;
+  const projectTeams = t.project.memberships.map(m => m.team);
+  const md = (body: string) => injectTeamMentions(body, projectTeams);
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -60,7 +63,7 @@ export default async function ThreadPage({ params }: { params: { id: string } })
           </div>
         )}
         <div className="pt-2 border-t border-slate-100">
-          <Markdown>{t.body}</Markdown>
+          <Markdown>{md(t.body)}</Markdown>
         </div>
         {t.attachments.length > 0 && (
           <div className="pt-3 border-t border-slate-100">
@@ -99,7 +102,7 @@ export default async function ThreadPage({ params }: { params: { id: string } })
                   <div className="text-xs text-slate-500 flex items-center gap-2">
                     {d.fromTeam.name} <Arrow /> {d.toTeam.name}
                   </div>
-                  <Markdown>{d.body}</Markdown>
+                  <Markdown>{md(d.body)}</Markdown>
                 </li>
               );
             })}
@@ -120,7 +123,7 @@ export default async function ThreadPage({ params }: { params: { id: string } })
                 <span>·</span>
                 <time>{new Date(c.createdAt).toLocaleString()}</time>
               </div>
-              <Markdown>{c.body}</Markdown>
+              <Markdown>{md(c.body)}</Markdown>
             </li>
           ))}
         </ul>

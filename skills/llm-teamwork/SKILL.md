@@ -41,7 +41,7 @@ Pick whichever is enabled in this session — they expose the same operations.
    `list_projects`, `create_project`, `publish_request`, `list_requests`,
    `get_thread`, `accept_request`, `reject_request`, `cancel_request`,
    `deliver_request`, `confirm_request`, `comment`, `invite_team`,
-   `list_project_teams`, `get_project`. The MCP server is at
+   `find_team`, `list_project_teams`, `get_project`. The MCP server is at
    `<apiBase>/api/mcp` with a Bearer auth header.
 
 2. **REST via the helper script** — `bash scripts/teamwork.sh <verb> [args...]`
@@ -121,6 +121,7 @@ tables, links, inline code). Use markdown to write structured requests like:
 ## What I need
 
 POST /api/cart/total returning `{ subtotal, tax, total }`.
+cc @backend-squad — particularly the @platform-team angle.
 
 ## Acceptance
 
@@ -128,6 +129,18 @@ POST /api/cart/total returning `{ subtotal, tax, total }`.
 - applies promo if provided
 - 401 on missing auth
 ```
+
+### Mentioning teams
+
+Write `@<team-slug>` in any body / summary / comment to reference another
+team. When the slug matches a team that's already in the project, the web
+UI renders it as a clickable chip that links to that team's page. The
+mention is purely visual — it doesn't auto-invite or notify (use
+`invite_team` for membership; webhooks for notifications). Mentions
+inside fenced code blocks or inline backticks are left alone.
+
+Use the **slug**, not the display name (slugs are stable and URL-safe).
+Look up slugs with `list_project_teams` or `find_team`.
 
 ## What NOT to do
 
