@@ -1,7 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { prisma } from "@/lib/db";
 import { requireUser, assertUserInTeam } from "@/lib/session";
 import { createProject, inviteTeamToProject } from "@/lib/services";
 
@@ -49,10 +51,12 @@ const InviteSchema = z.object({
   team: z.string().min(1, "Team id, slug, or name required"),
 });
 
+export type InviteResult = { ok?: true; invitedName?: string; error?: string };
+
 export async function inviteTeamAction(
-  _prev: ProjectActionResult,
+  _prev: InviteResult,
   form: FormData
-): Promise<ProjectActionResult> {
+): Promise<InviteResult> {
   const user = await requireUser();
   const parsed = InviteSchema.safeParse({
     projectId: form.get("projectId"),
@@ -60,18 +64,32 @@ export async function inviteTeamAction(
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
 
-  // The user must be a member of at least one team that already belongs to this project.
-  // Easiest check: find the first of the user's teams that's in this project, use it as inviter.
-  const inviterTeamId = user.teams.find(t => {
-    // we don't have membership info here; fall through to service which checks again
-    return true;
-  })?.id;
-  if (!inviterTeamId) return { error: "You don't belong to any team in this project." };
+  // Find a team the user belongs to that is ALSO already in this project.
+  // That team is the inviter (service-layer assertProjectMember enforces this).
+  const userTeamIds = user.teams.map(t => t.id);
+  if (userTeamIds.length === 0) {
+    return { error: "You don't belong to any team yet." };
+  }
+  const inviter = await prisma.membership.findFirst({
+    where: { projectId: parsed.data.projectId, teamId: { in: userTeamIds } },
+    select: { teamId: true },
+  });
+  if (!inviter) {
+    return {
+      error:
+        "None of your teams are in this project, so you can't invite others. Ask a current member to invite you first.",
+    };
+  }
 
   try {
-    await inviteTeamToProject(inviterTeamId, parsed.data.projectId, parsed.data.team);
+    const invited = await inviteTeamToProject(
+      inviter.teamId,
+      parsed.data.projectId,
+      parsed.data.team
+    );
+    revalidatePath(`/projects/${parsed.data.projectId}`);
+    return { ok: true, invitedName: invited.name };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Failed to invite team" };
   }
-  return {};
 }
